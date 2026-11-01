@@ -127,7 +127,13 @@ class Settings(NSObject):
                                          s.get("learn_corrections", True), "toggleLearn:")
         self.whisper_switch = self._switch(p, y - 250, "Whisper mode: lips + a soft whisper (uses the mic)",
                                            s.get("whisper", False), "toggleWhisper:")
-        _text(p, NSMakeRect(36, y - 288, SW - 72, 18), f"Cleanup: {self.app.cleaner.describe()}", 12, alpha=0.55)
+        from .mic import input_devices
+        mic = self.app.mic
+        self.mic_popup = self._popup(p, y - 290, "Whisper mic", ["Automatic (built-in)"] + input_devices(),
+                                     mic.name or "Automatic (built-in)", "pickMic:")
+        _text(p, NSMakeRect(36, y - 322, SW - 72, 18),
+              f"Cleanup: {self.app.cleaner.describe()}   ·   mic lag {mic.lag * 1000:.0f} ms (learned as you whisper)",
+              12, alpha=0.55)
         p.addSubview_(_capsule(self, "Open my data folder", "openData:", NSMakeRect(36, 40, 190, 34)))
         _text(p, NSMakeRect(240, 48, SW - 276, 18), "Clips, phrases, your trained models. Never uploaded.",
               11.5, alpha=0.5)
@@ -208,6 +214,21 @@ class Settings(NSObject):
         self._save()
         if on and self.app.av_reader is None:
             self.app.jobs.put(("whisper",))  # downloads the model the first time
+        elif on and self.app.mic.keep_open:
+            self.app.mic.open()
+        elif not on:
+            self.app.mic.close()  # lets AirPods drop back out of call mode
+
+    def pickMic_(self, sender):
+        name = sender.titleOfSelectedItem()
+        name = None if name.startswith("Automatic") else name
+        self.app.mic.close()
+        self.app.mic = self.app.make_mic(name)
+        self.app.settings["mic"] = name
+        self._save()
+        if self.app.whisper_on and self.app.mic.keep_open:
+            self.app.mic.open()
+        self.build()  # refresh the learned-lag line
 
     def toggleLearn_(self, sender):
         self.app.settings["learn_corrections"] = bool(sender.state())

@@ -70,8 +70,7 @@ class Lipflow(NSObject):
         self.context: list[str] = []
         self.hands_free = False
         self.pending_stop = None
-        from .mic import Mic
-        self.mic = Mic()
+        self.mic = self.make_mic(self.settings.get("mic"))
         self.av_reader = None        # whisper mode's audio-visual model, loaded when switched on
         self._ui_busy = False        # a video frame is waiting to be drawn on the main thread
         self.onboarding = None       # the setup window while it's collecting practice clips
@@ -425,6 +424,12 @@ class Lipflow(NSObject):
         else:
             ui(self.hud.show, "done", "Lipflow is ready", f"Hold {name} and mouth your words", 2.5)
 
+    @objc.python_method
+    def make_mic(self, name):
+        """A Mic for this device name (None/"auto" = built-in), seeded with the lag learned last time."""
+        from .mic import Mic
+        return Mic(name, lag=self.settings.get("mic_lags", {}).get(name or "auto", 0.0))
+
     @property
     def whisper_on(self) -> bool:
         return bool(self.settings.get("whisper")) and self.av_reader is not None and self.onboarding is None
@@ -444,6 +449,8 @@ class Lipflow(NSObject):
         self.av_reader = av.AVReader(beam_size=self.opts.beam)
         self.av_reader.warmup_av()
         print("[lipflow] whisper mode ready (lips + audio)")
+        if self.mic.keep_open:
+            self.mic.open()  # Bluetooth mics: switch the headset to call mode now, not on your first word
         ui(self.hud.show, "done", "Whisper mode on", "Whisper or speak softly while you mouth the words", 3.0)
 
     @objc.python_method
@@ -453,7 +460,15 @@ class Lipflow(NSObject):
         if not self.whisper_on or not getattr(rec, "audio", None):
             return None
         ts, _, _ = rec.snapshot()
-        wave = segment(rec.audio, ts[0], rois.shape[0])
+        mic = self.mic
+        if self.settings.get("mic_lag_auto", True):
+            old = mic.lag
+            mic.calibrate(rec.audio, ts[0], rec.mouth_open[:len(ts)])
+            if abs(mic.lag - old) >= 0.02:
+                print(f"[lipflow] mic lag {old * 1000:.0f} -> {mic.lag * 1000:.0f} ms ({mic.name or 'built-in'})")
+                self.settings.setdefault("mic_lags", {})[mic.name or "auto"] = mic.lag
+                save_settings(self.settings)
+        wave = segment(rec.audio, ts[0], rois.shape[0], lag=mic.lag)
         if wave is None:
             return None
         return self.av_reader.beam_search(self.av_reader.encode_av(rois, wave), nbest=5)

@@ -59,3 +59,23 @@ def test_mic_segment_aligns_to_video_clock():
     seg = mic.segment(chunks, start + 0.5 + mic.CAMERA_LATENCY, 25)  # 1 s of video starting at +0.5 s
     assert len(seg) == 16000
     assert np.allclose(seg, wave[8000:24000], atol=1e-6)
+
+
+def test_mic_lag_found_from_mouth_vs_loudness():
+    """A Bluetooth mic's audio arrives late; calibrate() recovers the delay and segment() undoes it."""
+    from lipflow import mic
+    rng = np.random.default_rng(1)
+    rate, n = mic.RATE, 100  # 4 s of video at 25 fps
+    mouth = np.convolve(rng.random(n + 10), np.ones(5) / 5, "valid")[:n].astype(np.float32)  # smooth open/close
+    whisper = (rng.standard_normal(n * 640) * np.repeat(mouth, 640)).astype(np.float32)  # loud when mouth open
+    t0, true_lag = 1000.0, 0.2
+    stamp = t0 - mic.CAMERA_LATENCY + true_lag  # audio stamped 0.2 s late
+    padded = np.concatenate([np.zeros(rate, np.float32), whisper, np.zeros(rate, np.float32)])
+    chunks = [(stamp - 1 + i / rate, padded[i:i + 1600]) for i in range(0, len(padded), 1600)]
+
+    m = mic.Mic("AirPods Pro")
+    assert m.keep_open and not mic.Mic().keep_open
+    assert m.calibrate(chunks, t0, mouth) == true_lag
+    assert np.allclose(mic.segment(chunks, t0, n, lag=m.lag), whisper, atol=1e-6)  # back in sync
+    assert np.corrcoef(mic.segment(chunks, t0, n)[:640 * 90], whisper[:640 * 90])[0, 1] < 0.5  # lag=0 isn't
+    assert mic.estimate_lag(chunks, t0, mouth[:20]) is None  # too short to trust
