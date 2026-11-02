@@ -26,7 +26,7 @@ from espnet.nets.scorers.length_bonus import LengthBonus  # noqa: E402
 
 MODEL_FPS = 25
 PERSONAL_LM_WEIGHT = 0.2
-MODELS = os.path.join(ROOT, "models")
+from .paths import MODELS  # noqa: E402
 _MEAN, _STD = 0.421, 0.165
 
 
