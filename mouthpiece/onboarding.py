@@ -1,7 +1,7 @@
 """First-run setup: permissions → import Wispr Flow → mouth ~24 sentences → train on your face.
 
 The practice step uses the normal push-to-talk key, so onboarding is also the tutorial. Clips are
-saved with their known text under ~/Library/Application Support/Lipflow/clips/onboarding. Training
+saved with their known text under ~/Library/Application Support/Mouthpiece/clips/onboarding. Training
 holds 6 of them out and only keeps the face model if it reads those better than the stock model.
 """
 from __future__ import annotations
@@ -61,7 +61,7 @@ class GlassWindow(NSWindow):
 
 
 class Onboarding(NSObject):
-    """Owns the setup window. `app` is the running Lipflow controller."""
+    """Owns the setup window. `app` is the running Mouthpiece controller."""
 
     def initWithApp_(self, app):
         self = objc.super(Onboarding, self).init()
@@ -73,7 +73,7 @@ class Onboarding(NSObject):
         self.timer = None
         self.win = GlassWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(0, 0, WW, WH), NSWindowStyleMaskBorderless, NSBackingStoreBuffered, False)
-        self.win.setTitle_("Set up Lipflow")
+        self.win.setTitle_("Set up Mouthpiece")
         self.win.setMovableByWindowBackground_(True)
         self.win.setHasShadow_(True)
         self.win.setOpaque_(False)
@@ -180,7 +180,7 @@ class Onboarding(NSObject):
     # -- 1. welcome -----------------------------------------------------------------
     @objc.python_method
     def welcome(self):
-        p = self._new_page("mouth", "Lipflow reads your lips",
+        p = self._new_page("mouth", "Mouthpiece reads your lips",
                            "Hold a key, mouth what you want to say without making a sound, let go, and the "
                            "text appears wherever you're typing. Setup takes about 8 minutes: it learns your "
                            "words and your face.")
@@ -212,8 +212,8 @@ class Onboarding(NSObject):
             self.perm_rows.append((status, btn))
         self.perm_next = self._button("Continue", "goWords:", (WW - 200) / 2, 90, 200, primary=True)
         # macOS keeps a denial for the life of the process, so a switch turned on in Settings
-        # may not show up until Lipflow restarts. Offer that once an Allow has been clicked.
-        self.perm_restart = self._button("Turned them on? Restart Lipflow", "restartForPerms:",
+        # may not show up until Mouthpiece restarts. Offer that once an Allow has been clicked.
+        self.perm_restart = self._button("Turned them on? Restart Mouthpiece", "restartForPerms:",
                                          (WW - 260) / 2, 46, 260, h=30)
         self.perm_restart.setHidden_(True)
         self._asked_perms = False
@@ -269,7 +269,7 @@ class Onboarding(NSObject):
         from .personal import PHRASES, WISPR_DIR
         have = os.path.exists(PHRASES)
         p = self._new_page("text.book.closed", "Teach it your words",
-                           "Most of what you'll mouth is stuff you already say. If you use Wispr Flow, Lipflow "
+                           "Most of what you'll mouth is stuff you already say. If you use Wispr Flow, Mouthpiece "
                            "can learn your phrasing and names from its history, read locally, never uploaded.")
         self._steps(1)
         self.words_status = _text(p, NSMakeRect(80, 250, WW - 160, 60), "", 13.5, alpha=0.8, center=True)
@@ -295,7 +295,7 @@ class Onboarding(NSObject):
                 msg = f"Imported {st['phrases']:,} phrases."
                 if st["new_names"]:
                     msg += f" Found {len(st['new_names'])} names and terms (edit them from the menu)."
-                msg += " Lipflow will learn your phrasing during training."
+                msg += " Mouthpiece will learn your phrasing during training."
             except Exception as e:
                 msg = f"Couldn't import: {e}"
             AppHelper.callAfter(self.words_status.setStringValue_, msg)
@@ -379,7 +379,7 @@ class Onboarding(NSObject):
         self.app.onboarding = None
         p = self._new_page("cpu", "Learning your face",
                            "Training runs on this Mac's GPU and takes about 5 minutes. You can keep working. "
-                           "Lipflow is paused until it's done.")
+                           "Mouthpiece is paused until it's done.")
         self._steps(3)
         self.progress = NSProgressIndicator.alloc().initWithFrame_(NSMakeRect(100, 300, WW - 200, 12))
         self.progress.setIndeterminate_(False)
@@ -388,7 +388,7 @@ class Onboarding(NSObject):
         p.addSubview_(self.progress)
         self.train_status = _text(p, NSMakeRect(60, 220, WW - 120, 56), "Starting…", 13.5, alpha=0.8, center=True)
         self.result = _text(p, NSMakeRect(60, 150, WW - 120, 60), "", 15, NSFontWeightSemibold, center=True)
-        self.done_btn = self._button("Start using Lipflow", "finish:", (WW - 220) / 2, 80, 220, primary=True)
+        self.done_btn = self._button("Start using Mouthpiece", "finish:", (WW - 220) / 2, 80, 220, primary=True)
         self.done_btn.setHidden_(True)
         self.app.jobs.put(("train", self))
 
@@ -430,4 +430,4 @@ class Onboarding(NSObject):
         self.app.settings["onboarded"] = True  # or the next settings change writes it back out
         self.win.orderOut_(None)
         self.app.camera.track_always = False
-        self.app.hud.show("done", "Lipflow is ready", "Hold Right Option anywhere and mouth your words", 3.0)
+        self.app.hud.show("done", "Mouthpiece is ready", "Hold Right Option anywhere and mouth your words", 3.0)

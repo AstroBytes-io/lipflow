@@ -1,4 +1,4 @@
-"""`lipflow train-lm`: fine-tune the decoder's language model on how you talk.
+"""`mouthpiece train-lm`: fine-tune the decoder's language model on how you talk.
 
 The beam search already uses a 16-layer subword Transformer LM trained on LRS3/TED text. This
 makes a personal copy fine-tuned on your imported phrases (phrases.txt). The copy runs next to the
@@ -97,7 +97,7 @@ def train(epochs: int = 3, lr: float = 3e-5, bs: int = 32, max_general_loss: flo
     random.seed(seed)
     torch.manual_seed(seed)
     if not os.path.exists(PHRASES):
-        raise FileNotFoundError("No phrases yet. Run `lipflow import-wispr` first.")
+        raise FileNotFoundError("No phrases yet. Run `mouthpiece import-wispr` first.")
     units = os.path.join(os.path.dirname(__file__), "unigram5000_units.txt")
     token_list = ["<blank>"] + [l.split()[0] for l in open(units, encoding="utf-8").read().splitlines()] + ["<eos>"]
     eos = len(token_list) - 1

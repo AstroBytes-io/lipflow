@@ -95,7 +95,7 @@ def train_on_face(beam: int, report) -> dict:
             note = (f"Your phrasing: {r['before']['yours']:.0f} → {r['after']['yours']:.0f} perplexity. "
                     if r["saved"] else "")
         except Exception as e:
-            print(f"[lipflow] train-lm failed: {e}")
+            print(f"[mouthpiece] train-lm failed: {e}")
     clips = saved_clips()
     learned = corrections.load_all()
     if len(clips) < N_HELD_OUT + 6:
@@ -123,5 +123,5 @@ def train_on_face(beam: int, report) -> dict:
     kept = after < before
     if kept:
         save(base)
-    print(f"[lipflow] onboarding: held-out WER {before:.1%} → {after:.1%} ({'kept' if kept else 'discarded'})")
+    print(f"[mouthpiece] onboarding: held-out WER {before:.1%} → {after:.1%} ({'kept' if kept else 'discarded'})")
     return {"before": before, "after": after, "kept": kept, "clips": len(clips), "note": note}

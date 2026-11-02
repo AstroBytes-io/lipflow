@@ -1,7 +1,7 @@
 """Global push-to-talk key. Timing lives in ptt.py.
 
 Windows and X11 use a pynput hook. Wayland reads /dev/input instead: pynput only sees XWayland,
-so a native Wayland window would swallow the hotkey. Windows skips keystrokes Lipflow injects
+so a native Wayland window would swallow the hotkey. Windows skips keystrokes Mouthpiece injects
 itself (the Ctrl+V paste). On Wayland those come from a virtual device, which the evdev hook ignores.
 """
 from __future__ import annotations
@@ -46,7 +46,7 @@ class PushToTalk(PushToTalkState):
                 if hook.start():
                     self._evdev = hook
                     return
-                print("[lipflow] can't read /dev/input; Wayland hotkey falls back to the X11 hook. "
+                print("[mouthpiece] can't read /dev/input; Wayland hotkey falls back to the X11 hook. "
                       "Add your user to the input group and log in again.")
         kwargs = {"on_press": self.press, "on_release": self.release}
         if sys.platform == "win32":

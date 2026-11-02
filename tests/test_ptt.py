@@ -1,7 +1,7 @@
 """Push-to-talk timing (shared by macOS and Windows) and the Windows key mapping. Runs everywhere."""
 from pynput.keyboard import Key, KeyCode
 
-from lipflow.ptt import DOUBLE_TAP, TAP_MAX, PushToTalkState
+from mouthpiece.ptt import DOUBLE_TAP, TAP_MAX, PushToTalkState
 
 T = 1_000_000.0  # a realistic clock: last_tap starts at 0
 
@@ -66,7 +66,7 @@ def test_escape_cancels_hands_free():
 
 
 def test_windows_keys_map_through_pynput(monkeypatch):
-    from lipflow.win.hotkey import KEYS, PushToTalk
+    from mouthpiece.win.hotkey import KEYS, PushToTalk
     assert Key.ctrl_r in KEYS["right_control"] and Key.alt_gr in KEYS["right_alt"]
     ptt, log = make(PushToTalk, "right_control")
     ptt.press(Key.ctrl_r); ptt.press(Key.ctrl_r)  # key repeat
@@ -81,7 +81,7 @@ def test_windows_keys_map_through_pynput(monkeypatch):
 
 
 def test_windows_altgr_fake_ctrl_does_not_cancel(monkeypatch):
-    from lipflow.win.hotkey import PushToTalk
+    from mouthpiece.win.hotkey import PushToTalk
     monkeypatch.setattr(PushToTalk, "_mask_alt", staticmethod(lambda: None))  # would inject a real key
     ptt, log = make(PushToTalk, "right_alt")
     ptt.press(Key.ctrl_l); ptt.press(Key.alt_gr)   # AltGr = a synthetic Left Ctrl + Right Alt

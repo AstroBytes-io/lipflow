@@ -72,7 +72,7 @@ class Mic:
         except Exception as e:
             self.error = str(e)
             self._stream = None
-            print(f"[lipflow] microphone unavailable: {e}")
+            print(f"[mouthpiece] microphone unavailable: {e}")
 
     def start(self):
         with self._lock:

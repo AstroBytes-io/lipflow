@@ -20,7 +20,7 @@ class Setup:
     def __init__(self, app):
         self.app = app
         self.win = tk.Toplevel(app.root)
-        self.win.title("Lipflow setup")
+        self.win.title("Mouthpiece setup")
         self.win.configure(bg=BG)
         self.win.resizable(False, False)
         sw, sh = app.root.winfo_screenwidth(), app.root.winfo_screenheight()
@@ -73,7 +73,7 @@ class Setup:
     # -- 1. welcome ---------------------------------------------------------------------------
     def welcome(self):
         key = self.app.key_name
-        p = self._new_page("Lipflow reads your lips",
+        p = self._new_page("Mouthpiece reads your lips",
                            f"Hold {key}, mouth what you want to say without making a sound, let go, and the "
                            "text appears wherever you're typing. Setup takes about 10 minutes: it learns your "
                            "words and your face.", -1)
@@ -87,7 +87,7 @@ class Setup:
     def goWords(self):
         from ..personal import PHRASES, WISPR_DIR
         p = self._new_page("Teach it your words",
-                           "Most of what you'll mouth is stuff you already say. If you use Wispr Flow, Lipflow "
+                           "Most of what you'll mouth is stuff you already say. If you use Wispr Flow, Mouthpiece "
                            "can learn your phrasing and names from its history, read locally, never uploaded.", 0)
         self.words_status = tk.Label(p, text="", fg=FG, bg=BG, font=(FONT, 11), wraplength=WW - 120)
         self.words_status.pack(pady=24)
@@ -190,14 +190,14 @@ class Setup:
         p = self._new_page("Learning your face",
                            ("Training runs on your graphics card" if gpu else
                             "Training runs on the processor, so it can take a while")
-                           + ". You can keep working; Lipflow is paused until it's done.", 2)
+                           + ". You can keep working; Mouthpiece is paused until it's done.", 2)
         self.progress = ttk.Progressbar(p, length=WW - 160, maximum=100)
         self.progress.pack(pady=(40, 12))
         self.train_status = tk.Label(p, text="Starting…", fg=DIM, bg=BG, font=(FONT, 11), wraplength=WW - 120)
         self.train_status.pack()
         self.result = tk.Label(p, text="", fg=FG, bg=BG, font=(FONT, 13, "bold"), wraplength=WW - 120)
         self.result.pack(pady=18)
-        self.done_btn = self._button(p, "Start using Lipflow", self.finish, primary=True)
+        self.done_btn = self._button(p, "Start using Mouthpiece", self.finish, primary=True)
         self.app.jobs.put(("train", self))
 
     def report(self, pct: float, text: str):  # model thread
@@ -228,4 +228,4 @@ class Setup:
         save_settings(s)
         self.app.settings["onboarded"] = True
         self.win.withdraw()
-        self.app.hud.show("done", "Lipflow is ready", f"Hold {self.app.key_name} anywhere and mouth your words", 3.0)
+        self.app.hud.show("done", "Mouthpiece is ready", f"Hold {self.app.key_name} anywhere and mouth your words", 3.0)

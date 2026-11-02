@@ -6,7 +6,7 @@ thousands of hours of speech. Loss is the model's own training objective: 0.1·C
 with label smoothing. Augmentation: random 88px crop of the 96px mouth patch, horizontal flip,
 time masking, small brightness jitter.
 
-Saved as <LIPFLOW_HOME>/models/vsr_face.pth containing only the changed tensors (~45 MB); LipReader loads it
+Saved as <MOUTHPIECE_HOME>/models/vsr_face.pth containing only the changed tensors (~45 MB); LipReader loads it
 on top of the base model. Clips come from onboarding (you mouth sentences with known text).
 """
 from __future__ import annotations

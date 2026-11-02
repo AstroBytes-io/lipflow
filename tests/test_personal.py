@@ -2,7 +2,7 @@ import sqlite3
 
 import pytest
 
-from lipflow import personal, vocab
+from mouthpiece import personal, vocab
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def fake_wispr(folder):
     con.execute("create table History (id text, app text, asrText text, formattedText text, meta text)")
     rows = ["Hey Miguel, can you send me the deck before the review?",
             "I'm sending you a message with my new tool.",
-            "Let's ship Lipflow to Miguel tomorrow.",
+            "Let's ship Mouthpiece to Miguel tomorrow.",
             "Can you ask Miguel about the Vizcom demo?",
             "Ping Miguel when the Vizcom build is green.",
             "The Vizcom standup moved to ten."] * 2
@@ -37,7 +37,7 @@ def test_import_finds_formatted_text_and_names(home):
     assert stats["source"].endswith("History.formattedText")
     assert stats["phrases"] == 6
     assert "Vizcom" in stats["new_names"] and "Miguel" in stats["new_names"]
-    assert "Lipflow" not in stats["new_names"]  # already listed
+    assert "Mouthpiece" not in stats["new_names"]  # already listed
     assert "Miguel" in vocab.load()
 
 

@@ -4,8 +4,8 @@ import pytest
 
 Quartz = pytest.importorskip("Quartz")  # macOS key listener; the shared timing is in test_ptt.py
 
-from lipflow import hotkey
-from lipflow.hotkey import KEYS, PushToTalk
+from mouthpiece import hotkey
+from mouthpiece.hotkey import KEYS, PushToTalk
 
 
 def _flags(ptt, pressed):
@@ -67,8 +67,8 @@ def test_escape_cancels():
     assert log[-1] == ("cancel", False)
 
 
-def test_ignores_lipflows_own_keystrokes():
-    from lipflow.paste import MARK
+def test_ignores_mouthpieces_own_keystrokes():
+    from mouthpiece.paste import MARK
     ptt, log = make()
     _flags(ptt, True)
     ev = Quartz.CGEventCreateKeyboardEvent(None, 0, True)

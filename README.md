@@ -1,4 +1,4 @@
-# Lipflow
+# Mouthpiece
 
 **Wispr Flow for your lips.** Hold a key, silently mouth what you want to say, let go, and the
 text shows up at your cursor in whatever app you're in. No microphone and no sound, just your webcam.
@@ -18,17 +18,17 @@ Everything runs locally on your Mac, Windows PC, or Linux. An optional LLM pass 
 Needs an Apple Silicon Mac on macOS 13 or later (macOS 26 for the Liquid Glass look), and about 2 GB of disk.
 
 ```sh
-git clone https://github.com/amywork777/lipflow.git ~/code/lipflow
-cd ~/code/lipflow && ./setup.sh     # installs uv deps, ~1.2 GB of models, builds /Applications/Lipflow.app
-open /Applications/Lipflow.app
+git clone https://github.com/amywork777/lipflow.git ~/code/mouthpiece
+cd ~/code/mouthpiece && ./setup.sh     # installs uv deps, ~1.2 GB of models, builds /Applications/Mouthpiece.app
+open /Applications/Mouthpiece.app
 ```
 
 The first launch opens setup, which takes about 8 minutes:
 
-1. **Permissions:** Camera, Input Monitoring and Accessibility, each asked once for "Lipflow".
+1. **Permissions:** Camera, Input Monitoring and Accessibility, each asked once for "Mouthpiece".
    The app is a small signed program that loads this checkout in-process, so those
-   permissions belong to Lipflow rather than to Python. If a switch is on in System
-   Settings but setup still shows it off, click **Restart Lipflow** under Continue.
+   permissions belong to Mouthpiece rather than to Python. If a switch is on in System
+   Settings but setup still shows it off, click **Restart Mouthpiece** under Continue.
 2. **Your words:** if you use Wispr Flow, it imports your dictation history (read locally, never
    uploaded) to learn your phrasing and the names you say.
 3. **Practice:** you silently mouth 24 sentences (taken from your own history when available).
@@ -38,10 +38,10 @@ The first launch opens setup, which takes about 8 minutes:
 
 Re-run it any time from the menu → *Set up / train on my face…*. More practice clips help more.
 Everything personal (clips, phrases, trained models) lives in
-`~/Library/Application Support/Lipflow/`. Delete that folder to start over.
+`~/Library/Application Support/Mouthpiece/`. Delete that folder to start over.
 
-To start Lipflow at login: System Settings → General → Login Items → add Lipflow. Logs are in
-`~/Library/Logs/Lipflow.log`. Running from a terminal (`uv run lipflow`) also works, but then
+To start Mouthpiece at login: System Settings → General → Login Items → add Mouthpiece. Logs are in
+`~/Library/Logs/Mouthpiece.log`. Running from a terminal (`uv run mouthpiece`) also works, but then
 macOS asks for permissions in the terminal's name.
 
 ### Windows
@@ -49,12 +49,12 @@ macOS asks for permissions in the terminal's name.
 Needs Windows 10 or 11 (64-bit) and about 3 GB of disk. In PowerShell:
 
 ```powershell
-git clone https://github.com/amywork777/lipflow.git $HOME\code\lipflow
-cd $HOME\code\lipflow
+git clone https://github.com/amywork777/lipflow.git $HOME\code\mouthpiece
+cd $HOME\code\mouthpiece
 powershell -ExecutionPolicy Bypass -File setup.ps1   # uv deps, ~1.2 GB of models, Start menu shortcut
 ```
 
-Then open **Lipflow** from the Start menu. It lives in the system tray (the pink mouth by the
+Then open **Mouthpiece** from the Start menu. It lives in the system tray (the pink mouth by the
 clock; click ^ if it's hidden). The first launch opens the same setup as on a Mac, minus
 permissions: your Wispr Flow words, 24 practice sentences, then training on your face.
 
@@ -70,30 +70,30 @@ How it differs from the Mac version:
   CUDA build of PyTorch: `uv pip install torch --index-url https://download.pytorch.org/whl/cu126`
   (re-run it after `uv sync`, which puts the CPU build back).
 - **Cleanup:** the in-process local model is Mac-only (MLX), so use Claude (`setx ANTHROPIC_API_KEY …`,
-  then restart Lipflow), the [Codex CLI](https://developers.openai.com/codex/cli) (`codex login`), or
-  [Ollama](https://ollama.com) (`ollama pull qwen3:4b`). Without one of these, Lipflow uses the offline rules.
+  then restart Mouthpiece), the [Codex CLI](https://developers.openai.com/codex/cli) (`codex login`), or
+  [Ollama](https://ollama.com) (`ollama pull qwen3:4b`). Without one of these, Mouthpiece uses the offline rules.
 - **Names from context:** taken from the window title only (on a Mac it also reads the text
   around your cursor). Learning from your corrections is Mac-only for now.
-- **Start with Windows:** tray menu → *Start with Windows*. Your data lives in `%APPDATA%\Lipflow`
-  (log: `Lipflow.log` there). `uv run lipflow doctor` checks the models and camera.
+- **Start with Windows:** tray menu → *Start with Windows*. Your data lives in `%APPDATA%\Mouthpiece`
+  (log: `Mouthpiece.log` there). `uv run mouthpiece doctor` checks the models and camera.
 
 ### Linux
 
 Needs a 64-bit Linux distro with a webcam, Python 3.11–3.12, and about 3 GB of disk (models + PyTorch).
 
 ```sh
-git clone https://github.com/amywork777/lipflow.git ~/code/lipflow
-cd ~/code/lipflow
+git clone https://github.com/amywork777/lipflow.git ~/code/mouthpiece
+cd ~/code/mouthpiece
 curl -LsSf https://astral.sh/uv/install.sh | sh   # if you don't have uv yet
 uv sync
 ./scripts/download-models.sh                        # ~1.2 GB of models
-uv run lipflow doctor
-uv run lipflow                                      # system tray (pink mouth icon)
+uv run mouthpiece doctor
+uv run mouthpiece                                      # system tray (pink mouth icon)
 ```
 
 The first launch runs the same setup as on Windows (import Wispr phrases if present, ~24 practice
 sentences, optional training on your face). Personal data lives in
-`$XDG_DATA_HOME/Lipflow` (usually `~/.local/share/Lipflow`). Logs: `Lipflow.log` in that folder.
+`$XDG_DATA_HOME/Mouthpiece` (usually `~/.local/share/Mouthpiece`). Logs: `Mouthpiece.log` in that folder.
 
 How it differs from the Mac version:
 
@@ -110,16 +110,16 @@ How it differs from the Mac version:
 - **Speed:** encoder runs on CPU unless you install the CUDA build of PyTorch (same as Windows).
   Training on your face is CPU-only and slower than on Apple Silicon.
 - **Cleanup:** the in-process MLX model is Mac-only. Use Claude (`export ANTHROPIC_API_KEY=…`) or
-  Ollama (`ollama pull qwen3:4b`, then `uv run lipflow --cleanup ollama`) for better accuracy.
+  Ollama (`ollama pull qwen3:4b`, then `uv run mouthpiece --cleanup ollama`) for better accuracy.
 - **Context / corrections:** names come from the active window title (Hyprland: `hyprctl`; Sway:
   `swaymsg`; KDE: `kdotool`; X11: `xdotool`). GNOME has no stable title API. Learning from
   in-field corrections is Mac-only for now (same as Windows).
-- **Global hotkey:** on Wayland Lipflow reads the keyboard from `/dev/input`, so your user needs
+- **Global hotkey:** on Wayland Mouthpiece reads the keyboard from `/dev/input`, so your user needs
   to be in the `input` group (log in again after adding it). X11 uses the same hook as Windows.
 
 ### Most accurate: whisper mode
 
-Settings → **Whisper mode**. While you hold the key, Lipflow also listens to a soft whisper and
+Settings → **Whisper mode**. While you hold the key, Mouthpiece also listens to a soft whisper and
 reads lips + audio together with the Auto-AVSR audio-visual model (downloaded the first time,
 1.8 GB). On test sentences, lips alone got 31.9% of words wrong; lips + audio got 6.9%. A real
 whisper is less clear than those test clips, so expect somewhere in between. The mic is only on
@@ -127,47 +127,47 @@ while you hold the key.
 
 ### Learning from your corrections
 
-When you fix a word Lipflow typed (within about 30 seconds), it saves that clip with your
+When you fix a word Mouthpiece typed (within about 30 seconds), it saves that clip with your
 corrected sentence, and the next *Practice & train more* round uses it. Only the text field it
 pasted into is read. Switch it off in Settings.
 
 ### Better accuracy: turn on LLM cleanup
 
 Lip reading can't tell apart words that look the same on the lips (p/b/m, f/v, t/d/n…), so the raw
-model output reads like "WALLET OFFICER" when you said "while in office". Lipflow sends the model's
+model output reads like "WALLET OFFICER" when you said "while in office". Mouthpiece sends the model's
 top-3 guesses plus your last few dictations to an LLM, which picks the sentence you meant and
 fixes casing, punctuation and numbers. You choose which one under **Cleanup** in the menu bar (tray
 on Windows), or with `--cleanup <name>` for one run. **Automatic**, the default, uses Claude if you've
 set a key, otherwise the on-device model, otherwise the offline rules.
 
 1. **Claude**: `export ANTHROPIC_API_KEY=…` (model `claude-opus-5-5` at low effort; override with
-   `LIPFLOW_MODEL`, e.g. `LIPFLOW_MODEL=claude-haiku-4-5` for lower latency). Best at fixing badly
+   `MOUTHPIECE_MODEL`, e.g. `MOUTHPIECE_MODEL=claude-haiku-4-5` for lower latency). Best at fixing badly
    mis-read sentences.
 2. **ChatGPT (Codex CLI)**: uses your ChatGPT plan, no API key. Install the
    [Codex CLI](https://developers.openai.com/codex/cli) (`brew install --cask codex` or
    `npm install -g @openai/codex`), run `codex login`, then pick it in the menu. Each sentence is one
-   read-only `codex exec` run in an empty folder. Override the model with `LIPFLOW_CODEX_MODEL`.
+   read-only `codex exec` run in an empty folder. Override the model with `MOUTHPIECE_CODEX_MODEL`.
 3. **On-device model**: Qwen3-0.6B 4-bit running in-process on Apple Silicon
    via MLX. About 350 MB, downloaded on first launch, and about 0.2 s per sentence, fully offline.
    Tiny models copy the formatting they're shown, so this one gets lowercase guesses and a few
-   worked examples (`SMALL_SHOTS` in `cleanup.py`). Override with `LIPFLOW_LOCAL_MODEL`.
-4. **Ollama**: `ollama pull qwen3:4b`, then pick it in the menu (override with `LIPFLOW_OLLAMA_MODEL`).
+   worked examples (`SMALL_SHOTS` in `cleanup.py`). Override with `MOUTHPIECE_LOCAL_MODEL`.
+4. **Ollama**: `ollama pull qwen3:4b`, then pick it in the menu (override with `MOUTHPIECE_OLLAMA_MODEL`).
 5. **Offline rules**: sentence case, "I", end punctuation, "nineteen forty three" → 1943.
 
 **Learn from your Wispr Flow history.** Most of what you'll mouth is stuff you already say.
 
 ```sh
-uv run lipflow import-wispr     # or: --from-text my-writing.txt
+uv run mouthpiece import-wispr     # or: --from-text my-writing.txt
 ```
 
 This reads Wispr Flow's local database read-only, prints only counts, and saves your phrases to
-`~/Library/Application Support/Lipflow/phrases.txt`. Nothing leaves your Mac. Lipflow then:
+`~/Library/Application Support/Mouthpiece/phrases.txt`. Nothing leaves your Mac. Mouthpiece then:
 picks between the lip-reader's top 5 guesses using a small model of the word pairs you use;
 shows the cleanup model your past sentences closest to what it read; and adds names you
-capitalise often to your custom words for review. Restart Lipflow afterwards.
+capitalise often to your custom words for review. Restart Mouthpiece afterwards.
 
 **Custom words.** Names are the hardest thing to lip-read (a name is just lip shapes). Put yours
-in the Lipflow menu → *Edit custom words*, one per line (`~/Library/Application Support/Lipflow/words.txt`).
+in the Mouthpiece menu → *Edit custom words*, one per line (`~/Library/Application Support/Mouthpiece/words.txt`).
 A guess that contains one of your words wins over the others and gets your capitalization, and
 the LLM is told about them.
 
@@ -178,12 +178,12 @@ the LLM is told about them.
 | Hold **Right Option**, mouth the words, release | dictate |
 | Double-tap **Right Option** … tap again | hands-free (up to 60 s) |
 | **Esc** while listening | cancel |
-| Lipflow menu → Copy last dictation / Open history | get text back |
+| Mouthpiece menu → Copy last dictation / Open history | get text back |
 
-Lipflow keeps filming for 0.4 s after you release the key, because the model needs the frames
+Mouthpiece keeps filming for 0.4 s after you release the key, because the model needs the frames
 after the last word to read it.
 
-Options: `uv run lipflow --help`
+Options: `uv run mouthpiece --help`
 
 ```
 --key {right_option,left_option,right_command,right_control,fn}
@@ -193,7 +193,7 @@ Options: `uv run lipflow --help`
 --camera N|FILE   camera index, or a video file to stand in for the webcam
 ```
 
-Lip-read a video file: `uv run lipflow file talk.mp4 --start 10 --end 20`
+Lip-read a video file: `uv run mouthpiece file talk.mp4 --start 10 --end 20`
 
 ## How it works
 
@@ -224,15 +224,15 @@ errors on your own webcam. That's what the LLM cleanup is for.
 
 ```sh
 ./setup.sh --samples      # also fetch the public-domain test clips
-uv run pytest             # the paste test is opt-in: LIPFLOW_TEST_PASTE=1
+uv run pytest             # the paste test is opt-in: MOUTHPIECE_TEST_PASTE=1
 ```
 
 On Windows: `setup.ps1 -Samples`, then `uv run pytest`. CI runs the whole Windows setup and reads
 a real clip on every push (`.github/workflows/windows.yml`).
 
-Code map: `lipflow/face.py` (landmarks → mouth crops), `vsr.py` (model), `camera.py`, `hotkey.py`
+Code map: `mouthpiece/face.py` (landmarks → mouth crops), `vsr.py` (model), `camera.py`, `hotkey.py`
 (Quartz event tap; pynput's macOS listener crashes on recent macOS), `paste.py`, `hud.py`,
-`cleanup.py`, `app.py` (wiring + menu bar). Windows: `lipflow/win/` (tray app, overlay, setup
+`cleanup.py`, `app.py` (wiring + menu bar). Windows: `mouthpiece/win/` (tray app, overlay, setup
 window, pynput key hook, clipboard paste). Shared by both: `ptt.py` (key timing), `dictation.py`,
 `practice.py`. See `NOTICE` for bundled code and model licensing.
 The LRS3-trained weights are for non-commercial research use.

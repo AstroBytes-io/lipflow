@@ -1,8 +1,8 @@
-"""Build ~/Applications/Lipflow.app: a small bundle that launches this checkout's venv.
+"""Build ~/Applications/Mouthpiece.app: a small bundle that launches this checkout's venv.
 
 Why a bundle: macOS grants Camera / Input Monitoring / Accessibility per app. Run from a
-terminal, Lipflow borrows the terminal's permissions (and asks for them in the terminal's name);
-as an app it gets its own entries called "Lipflow", starts from Launchpad/Spotlight, and can be
+terminal, Mouthpiece borrows the terminal's permissions (and asks for them in the terminal's name);
+as an app it gets its own entries called "Mouthpiece", starts from Launchpad/Spotlight, and can be
 added to Login Items.
 
     uv run python scripts/make_app.py [--dest /Applications]
@@ -56,7 +56,7 @@ def make_icns(dest_icns: str):
     tmp = tempfile.mkdtemp()
     base = os.path.join(tmp, "base.png")
     draw_icon(base)
-    iconset = os.path.join(tmp, "Lipflow.iconset")
+    iconset = os.path.join(tmp, "Mouthpiece.iconset")
     os.makedirs(iconset)
     for s in (16, 32, 128, 256, 512):
         for scale in (1, 2):
@@ -69,51 +69,51 @@ def make_icns(dest_icns: str):
 
 
 def build(dest_dir: str = "/Applications") -> str:
-    app = os.path.join(os.path.expanduser(dest_dir), "Lipflow.app")
+    app = os.path.join(os.path.expanduser(dest_dir), "Mouthpiece.app")
     if os.path.exists(app):
         shutil.rmtree(app)
     macos = os.path.join(app, "Contents", "MacOS")
     res = os.path.join(app, "Contents", "Resources")
     os.makedirs(macos)
     os.makedirs(res)
-    make_icns(os.path.join(res, "Lipflow.icns"))
+    make_icns(os.path.join(res, "Mouthpiece.icns"))
     plistlib.dump({
-        "CFBundleName": "Lipflow",
-        "CFBundleDisplayName": "Lipflow",
-        "CFBundleIdentifier": "app.lipflow.Lipflow",
+        "CFBundleName": "Mouthpiece",
+        "CFBundleDisplayName": "Mouthpiece",
+        "CFBundleIdentifier": "io.astrobytes.mouthpiece",
         "CFBundleVersion": "1",
         "CFBundleShortVersionString": "0.1",
         "CFBundlePackageType": "APPL",
-        "CFBundleExecutable": "Lipflow",
-        "CFBundleIconFile": "Lipflow",
+        "CFBundleExecutable": "Mouthpiece",
+        "CFBundleIconFile": "Mouthpiece",
         "LSUIElement": True,  # menu-bar app: no Dock icon
         "LSMinimumSystemVersion": "13.0",
-        "NSCameraUsageDescription": "Lipflow reads your lips from the camera to type what you mouth. "
+        "NSCameraUsageDescription": "Mouthpiece reads your lips from the camera to type what you mouth. "
                                     "Video never leaves this Mac.",
         "NSMicrophoneUsageDescription": "Whisper mode listens to a soft whisper while you hold the key, "
                                         "to read your lips more accurately. Audio never leaves this Mac.",
         "NSHighResolutionCapable": True,
     }, open(os.path.join(app, "Contents", "Info.plist"), "wb"))
-    launcher = os.path.join(macos, "Lipflow")
+    launcher = os.path.join(macos, "Mouthpiece")
     _compile_launcher(launcher)
     # Ad-hoc signature so Accessibility / Input Monitoring bind to this app, not to
     # whatever Python the old shell launcher exec'd. Unsigned bundles record a grant
     # the running process can never satisfy, and setup's Continue button stays off.
-    subprocess.run(["codesign", "--force", "--sign", "-", "--identifier", "app.lipflow.Lipflow", app],
+    subprocess.run(["codesign", "--force", "--sign", "-", "--identifier", "io.astrobytes.mouthpiece", app],
                    check=True)
     subprocess.run(["touch", app])
     return app
 
 
 def _compile_launcher(dest: str) -> None:
-    """Mach-O main executable that loads the venv in-process. See lipflow_launcher.c."""
+    """Mach-O main executable that loads the venv in-process. See mouthpiece_launcher.c."""
     py = os.path.realpath(os.path.join(ROOT, ".venv", "bin", "python"))
     pyhome = os.path.dirname(os.path.dirname(py))
     version = f"python{sys.version_info.major}.{sys.version_info.minor}"
     include = os.path.join(pyhome, "include", version)
     lib = os.path.join(pyhome, "lib")
     site = os.path.join(ROOT, ".venv", "lib", version, "site-packages")
-    src = os.path.join(os.path.dirname(__file__), "lipflow_launcher.c")
+    src = os.path.join(os.path.dirname(__file__), "mouthpiece_launcher.c")
     if not os.path.isfile(os.path.join(include, "Python.h")):
         raise SystemExit(f"no Python headers at {include}; run ./setup.sh first")
     if not os.path.isdir(site):
@@ -121,9 +121,9 @@ def _compile_launcher(dest: str) -> None:
     subprocess.run([
         "clang", "-O2", "-arch", "arm64",
         f"-I{include}",
-        f"-DLIPFLOW_ROOT={root_c(ROOT)}",
-        f"-DLIPFLOW_PYHOME={root_c(pyhome)}",
-        f"-DLIPFLOW_SITE={root_c(site)}",
+        f"-DMOUTHPIECE_ROOT={root_c(ROOT)}",
+        f"-DMOUTHPIECE_PYHOME={root_c(pyhome)}",
+        f"-DMOUTHPIECE_SITE={root_c(site)}",
         src, f"-L{lib}", f"-l{version}",
         f"-Wl,-rpath,{lib}",
         "-o", dest,

@@ -78,7 +78,7 @@ class LipReader:
             torch_load(lm_path, lm)
             lm.eval()
         scorers["lm"] = lm
-        # How you talk: a copy of the LM fine-tuned on your phrases (lipflow train-lm), scored
+        # How you talk: a copy of the LM fine-tuned on your phrases (mouthpiece train-lm), scored
         # alongside the general one so the search still knows ordinary English.
         plm = None
         pl = PERSONAL_LM

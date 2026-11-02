@@ -1,9 +1,9 @@
-"""Lipflow tray app (Windows and Linux). Hold a key, mouth the words, let go — the text appears at your cursor.
+"""Mouthpiece tray app (Windows and Linux). Hold a key, mouth the words, let go — the text appears at your cursor.
 
 Threads: tk owns the main thread (overlay, setup window); pynput's hook thread reports the key;
 pystray runs the tray menu on its own thread; one model thread reads lips. Everything that touches
 tk goes through ui(), which queues it for the main thread. Linux paste is wl-copy/wtype, or
-xclip/xdotool on X11 (lipflow/linux/paste.py).
+xclip/xdotool on X11 (mouthpiece/linux/paste.py).
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ if sys.platform == "linux":
 else:
     from .paste import copy_text, paste_text
 
-LOG = os.path.join(HOME, "Lipflow.log")
+LOG = os.path.join(HOME, "Mouthpiece.log")
 CAMERAS = 4  # Windows can't name cameras through OpenCV: offer the first few by number
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
@@ -52,7 +52,7 @@ def key_label(key: str) -> str:
     return key.replace("_", " ").title().replace("Control", "Ctrl")
 
 
-class Lipflow:
+class Mouthpiece:
     def __init__(self, opts: Options):
         self.opts = opts
         self.settings = load_settings()
@@ -113,8 +113,8 @@ class Lipflow:
         self.hud = HUD(self.root)
         self._install_key()
         self._build_tray()
-        self.hud.show("reading", "Lipflow", "Loading the lip-reading model…")
-        threading.Thread(target=self._worker, name="lipflow-model", daemon=True).start()
+        self.hud.show("reading", "Mouthpiece", "Loading the lip-reading model…")
+        threading.Thread(target=self._worker, name="mouthpiece-model", daemon=True).start()
         self.jobs.put(("load",))
         self.root.after(15, self._pump)
 
@@ -185,10 +185,10 @@ class Lipflow:
             Item("Edit custom words…", lambda icon, item: self._edit_words()),
             Item("Open log", lambda icon, item: self._notepad(LOG)),
             Menu.SEPARATOR,
-            Item("Quit Lipflow", lambda icon, item: self.ui(self.quit)),
+            Item("Quit Mouthpiece", lambda icon, item: self.ui(self.quit)),
         )
-        self.icon = pystray.Icon("Lipflow", tray_image(False), "Lipflow", menu)
-        threading.Thread(target=self.icon.run, name="lipflow-tray", daemon=True).start()
+        self.icon = pystray.Icon("Mouthpiece", tray_image(False), "Mouthpiece", menu)
+        threading.Thread(target=self.icon.run, name="mouthpiece-tray", daemon=True).start()
 
     def _set_icon(self, listening: bool):
         try:
@@ -213,7 +213,7 @@ class Lipflow:
         save_settings(self.settings)
         self.camera.set_source(value)
         self.icon.update_menu()
-        print(f"[lipflow] camera: {value}")
+        print(f"[mouthpiece] camera: {value}")
 
     def _pick_cleanup(self, name):
         self.cleanup_choice = self.settings["cleanup"] = name
@@ -253,7 +253,7 @@ class Lipflow:
         exe = sys.executable
         if exe.lower().endswith("python.exe"):  # no console window at login
             exe = exe[:-len("python.exe")] + "pythonw.exe"
-        return f'"{exe}" -X utf8 -m lipflow'
+        return f'"{exe}" -X utf8 -m mouthpiece'
 
     def _autostart_enabled(self) -> bool:
         if sys.platform != "win32":
@@ -261,7 +261,7 @@ class Lipflow:
         import winreg
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as k:
-                winreg.QueryValueEx(k, "Lipflow")
+                winreg.QueryValueEx(k, "Mouthpiece")
                 return True
         except OSError:
             return False
@@ -272,9 +272,9 @@ class Lipflow:
         import winreg
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as k:
             if self._autostart_enabled():
-                winreg.DeleteValue(k, "Lipflow")
+                winreg.DeleteValue(k, "Mouthpiece")
             else:
-                winreg.SetValueEx(k, "Lipflow", 0, winreg.REG_SZ, self._autostart_command())
+                winreg.SetValueEx(k, "Mouthpiece", 0, winreg.REG_SZ, self._autostart_command())
 
     def show_setup(self, start_at: str = "welcome"):
         from .setup import Setup
@@ -385,7 +385,7 @@ class Lipflow:
             waited += PREVIEW_EVERY
             if not rec.ts and (self.camera.error or waited > 6):
                 msg = self.camera.error or "The camera isn't sending frames"
-                print(f"[lipflow] camera problem: {msg}")
+                print(f"[mouthpiece] camera problem: {msg}")
                 self.ui(self.hud.show, "error", "Camera problem", msg, 6.0)
                 return
             if self.session != session or self.preview_busy or len(rec.ts) < 15:
@@ -409,7 +409,7 @@ class Lipflow:
                     self._load_whisper()
                 elif job[0] == "cleanup":
                     self.cleaner = Cleaner(job[1])
-                    print(f"[lipflow] cleanup: {self.cleaner.describe()}")
+                    print(f"[mouthpiece] cleanup: {self.cleaner.describe()}")
                     self.ui(self.icon.update_menu)
             except Exception as e:
                 import traceback
@@ -424,7 +424,7 @@ class Lipflow:
         self.reader = LipReader(beam_size=self.opts.beam)
         self.reader.warmup()
         self.loading = False
-        print(f"[lipflow] model ready in {time.time() - t:.1f}s "
+        print(f"[mouthpiece] model ready in {time.time() - t:.1f}s "
               f"(encoder on {self.reader.enc_device}, cleanup: {self.cleaner.describe()})")
         self.ui(self._set_state, "Ready")
         if self.settings.get("whisper"):
@@ -433,7 +433,7 @@ class Lipflow:
             self.ui(self.hud.hide)
             self.ui(self.show_setup)
         else:
-            self.ui(self.hud.show, "done", "Lipflow is ready", f"Hold {self.key_name} and mouth your words", 2.5)
+            self.ui(self.hud.show, "done", "Mouthpiece is ready", f"Hold {self.key_name} and mouth your words", 2.5)
 
     @property
     def whisper_on(self) -> bool:
@@ -451,7 +451,7 @@ class Lipflow:
         self.ui(self.hud.show, "reading", "Whisper mode", "Loading…")
         self.av_reader = av.AVReader(beam_size=self.opts.beam)
         self.av_reader.warmup_av()
-        print("[lipflow] whisper mode ready (lips + audio)")
+        print("[mouthpiece] whisper mode ready (lips + audio)")
         self.ui(self.hud.show, "done", "Whisper mode on", "Whisper or speak softly while you mouth the words", 3.0)
 
     def _av_candidates(self, rec, rois):
@@ -480,13 +480,13 @@ class Lipflow:
         ob = self.onboarding  # the setup window can be closed meanwhile on the tk thread
         problem = clip_problem(rec)
         if problem and ob is not None:
-            print(f"[lipflow] practice clip rejected ({rec.duration:.1f}s, {len(rec.ts)} frames, face in "
+            print(f"[mouthpiece] practice clip rejected ({rec.duration:.1f}s, {len(rec.ts)} frames, face in "
                   f"{rec.face_ratio:.0%}): {problem[0]}")
             self.ui(ob.clip_done, False, f"{problem[0]}. {problem[1]}.")
             self.ui(self.hud.hide)
             return
         if problem:
-            print(f"[lipflow] skipped {rec.duration:.1f}s clip ({len(rec.ts)} frames, face in "
+            print(f"[mouthpiece] skipped {rec.duration:.1f}s clip ({len(rec.ts)} frames, face in "
                   f"{rec.face_ratio:.0%}): {problem[0]}")
             self.ui(self.hud.show, "error", problem[0], problem[1], 2.2)
             return
@@ -495,7 +495,7 @@ class Lipflow:
         t_enc = time.time() - t0
         if ob is not None:  # practice clip: keep it with its known text, don't paste
             raw = self.reader.greedy(enc)
-            print(f"[lipflow] practice clip saved ({rec.duration:.1f}s): {raw!r}")
+            print(f"[mouthpiece] practice clip saved ({rec.duration:.1f}s): {raw!r}")
             self.ui(ob.clip_done, True, "", rois, self.onboarding_text, raw)
             self.ui(self.hud.hide)
             return
@@ -503,18 +503,18 @@ class Lipflow:
         candidates = self._av_candidates(rec, rois)
         if not candidates or not candidates[0]:
             if candidates is not None:
-                print("[lipflow] lips + audio read nothing, using lips only")
+                print("[mouthpiece] lips + audio read nothing, using lips only")
             candidates = self.reader.beam_search(enc, nbest=5)
         t_beam = time.time() - t0 - t_enc
         if not candidates or not candidates[0]:
-            print(f"[lipflow] {rec.duration:.1f}s clip: nothing read")
+            print(f"[mouthpiece] {rec.duration:.1f}s clip: nothing read")
             self.ui(self.hud.show, "error", "Couldn't read that", "Try again, a little slower", 2.2)
             return
         self.ui(self.hud.set_text, candidates[0].lower())
         ctx = self.ctx
         text = self.cleaner(candidates, context=" ".join(self.context[-3:]), names=ctx.names if ctx else None)
         t_all = time.time() - t0
-        print(f"[lipflow] {rec.duration:.1f}s clip → raw: {candidates[0]!r}\n"
+        print(f"[mouthpiece] {rec.duration:.1f}s clip → raw: {candidates[0]!r}\n"
               f"          → typed: {text!r}  (encode {t_enc:.2f}s, beam {t_beam:.2f}s, total {t_all:.2f}s)")
         if not text:
             self.ui(self.hud.show, "error", "Couldn't read that", "Try again, a little slower", 2.2)
@@ -546,7 +546,7 @@ class Lipflow:
 
 
 def _log_to_file():
-    """pythonw has no console: send prints and tracebacks to %APPDATA%\\Lipflow\\Lipflow.log."""
+    """pythonw has no console: send prints and tracebacks to %APPDATA%\\Mouthpiece\\Mouthpiece.log."""
     os.makedirs(HOME, exist_ok=True)
     try:
         if os.path.getsize(LOG) > 5_000_000:
@@ -555,30 +555,30 @@ def _log_to_file():
         pass
     f = open(LOG, "a", encoding="utf-8", buffering=1)
     sys.stdout = sys.stderr = f
-    print(f"\n[lipflow] started {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"\n[mouthpiece] started {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 def _already_running() -> bool:
     import ctypes
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.CreateMutexW.restype = ctypes.c_void_p
-    _already_running.handle = kernel32.CreateMutexW(None, False, "Local\\LipflowTray")  # held until exit
+    _already_running.handle = kernel32.CreateMutexW(None, False, "Local\\MouthpieceTray")  # held until exit
     return ctypes.get_last_error() == 183  # ERROR_ALREADY_EXISTS
 
 
 def run(opts: Options):
-    if sys.stdout is None or os.environ.get("LIPFLOW_APP"):
+    if sys.stdout is None or os.environ.get("MOUTHPIECE_APP"):
         _log_to_file()
     if sys.platform == "win32" and _already_running():
         import ctypes
-        ctypes.WinDLL("user32").MessageBoxW(None, "Lipflow is already running. Look for the pink mouth icon "
+        ctypes.WinDLL("user32").MessageBoxW(None, "Mouthpiece is already running. Look for the pink mouth icon "
                                                   "in the system tray (you may need to click ^ to see it).",
-                                            "Lipflow", 0x40)
+                                            "Mouthpiece", 0x40)
         return
-    lf = Lipflow(opts)
+    lf = Mouthpiece(opts)
     lf.start()
     import signal
     signal.signal(signal.SIGINT, lambda *a: lf.ui(lf.quit))  # tk would swallow Ctrl-C in its callbacks
-    print(f"[lipflow] hold {lf.key_name} and mouth your words · double-tap for hands-free · Esc cancels · Ctrl-C quits")
+    print(f"[mouthpiece] hold {lf.key_name} and mouth your words · double-tap for hands-free · Esc cancels · Ctrl-C quits")
     lf.root.mainloop()
     os._exit(0)  # the hook, tray and model threads don't need a clean shutdown

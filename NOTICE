@@ -1,13 +1,16 @@
-Lipflow bundles code from these projects:
+Mouthpiece is derived from Lipflow by Amy Zhou (github.com/amywork777/lipflow), MIT License,
+Copyright (c) 2026 Amy Zhou. The original license text is in LICENSE.
+
+Lipflow (the upstream project) bundles code from these projects:
 
 - espnet/ — a trimmed copy of ESPnet (Apache License 2.0, Copyright 2017 Johns Hopkins
-  University and ESPnet contributors), as vendored by Auto-AVSR and Chaplin. Lipflow patches:
+  University and ESPnet contributors), as vendored by Auto-AVSR and Chaplin. Lipflow's patches:
   distutils removed (Python 3.12+), device-agnostic CTC prefix scoring, and cached cross-attention
   keys/values during beam search.
-- lipflow/mean_face.npy, lipflow/unigram5000_units.txt and the preprocessing in lipflow/face.py
-  and lipflow/vsr.py are adapted from Auto-AVSR / Visual_Speech_Recognition_for_Multiple_Languages
+- mouthpiece/mean_face.npy, mouthpiece/unigram5000_units.txt and the preprocessing in mouthpiece/face.py
+  and mouthpiece/vsr.py are adapted from Auto-AVSR / Visual_Speech_Recognition_for_Multiple_Languages
   by Pingchuan Ma et al., Imperial College London (Apache License 2.0).
-- lipflow/data/web2-lower.txt.gz — the lowercase words of web2 (Webster's Second International,
+- mouthpiece/data/web2-lower.txt.gz — the lowercase words of web2 (Webster's Second International,
   1934, public domain; the /usr/share/dict/words list on macOS and BSD), so name snapping can tell
   real words from names on Windows too.
 - Chaplin by Amanvir Parhar (MIT License) — the original "type what you mouth" idea and the

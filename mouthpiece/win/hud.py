@@ -1,4 +1,4 @@
-"""The floating pill above the taskbar: what Lipflow is doing, live words, and your mouth while you talk.
+"""The floating pill above the taskbar: what Mouthpiece is doing, live words, and your mouth while you talk.
 
 A borderless always-on-top tk window that never takes focus, so Ctrl+V still lands in the app
 you're dictating into. Windows uses WS_EX_NOACTIVATE and a colour-key. Linux uses an EWMH

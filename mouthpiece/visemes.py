@@ -47,7 +47,7 @@ def is_word(w: str) -> bool:
     if _DICT is None:
         try:
             _DICT = {l.strip() for l in open("/usr/share/dict/words") if l[:1].islower()}
-        except OSError:  # Windows: the same list (web2, 1934, public domain) ships with Lipflow
+        except OSError:  # Windows: the same list (web2, 1934, public domain) ships with Mouthpiece
             import gzip
             path = os.path.join(os.path.dirname(__file__), "data", "web2-lower.txt.gz")
             try:

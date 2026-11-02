@@ -1,6 +1,6 @@
 """Your own words: names and terms lip reading can't guess (a name is just lip shapes).
 
-One per line in ~/Library/Application Support/Lipflow/words.txt. They're used to pick
+One per line in ~/Library/Application Support/Mouthpiece/words.txt. They're used to pick
 between the model's top guesses and to fix their capitalisation, and given to the LLM.
 """
 from __future__ import annotations
@@ -11,9 +11,9 @@ import re
 from .paths import HOME
 
 PATH = os.path.join(HOME, "words.txt")
-_TEMPLATE = """# Lipflow custom words: one name or term per line, written how you want it typed.
+_TEMPLATE = """# Mouthpiece custom words: one name or term per line, written how you want it typed.
 # When one of the model's top guesses contains a word from this list, that guess wins.
-Lipflow
+Mouthpiece
 """
 
 

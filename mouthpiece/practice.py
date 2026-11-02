@@ -1,6 +1,6 @@
 """Practice sentences and the clips you record for them, shared by the macOS and Windows setup.
 
-Clips are saved with their known text under <Lipflow home>/clips/onboarding. Training holds
+Clips are saved with their known text under <Mouthpiece home>/clips/onboarding. Training holds
 N_HELD_OUT of them out and only keeps the face model if it reads those better than the stock model.
 """
 from __future__ import annotations

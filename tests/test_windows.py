@@ -11,40 +11,40 @@ pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows only")
 
 def test_data_lives_in_appdata(monkeypatch):
     import importlib
-    import lipflow.paths as paths
-    monkeypatch.delenv("LIPFLOW_HOME", raising=False)
+    import mouthpiece.paths as paths
+    monkeypatch.delenv("MOUTHPIECE_HOME", raising=False)
     monkeypatch.setenv("APPDATA", r"C:\Users\me\AppData\Roaming")
     try:
-        assert importlib.reload(paths).HOME == r"C:\Users\me\AppData\Roaming\Lipflow"
+        assert importlib.reload(paths).HOME == r"C:\Users\me\AppData\Roaming\Mouthpiece"
     finally:
         importlib.reload(paths)
 
 
 def test_clipboard_round_trip_with_unicode():
-    from lipflow.win import paste
+    from mouthpiece.win import paste
     try:
         before = paste.get_text()
     except OSError:
         pytest.skip("no clipboard in this session")
-    paste.set_text("lipflow · naïve ✓")
-    assert paste.get_text() == "lipflow · naïve ✓"
+    paste.set_text("mouthpiece · naïve ✓")
+    assert paste.get_text() == "mouthpiece · naïve ✓"
     if before is not None:
         paste.set_text(before)
 
 
 def test_context_capture_never_raises():
-    from lipflow.context import capture
+    from mouthpiece.context import capture
     ctx = capture()
     assert isinstance(ctx.title, str) and isinstance(ctx.app, str)
 
 
 def test_word_list_ships_for_name_snapping():
-    from lipflow.visemes import is_word
+    from mouthpiece.visemes import is_word
     assert is_word("plank") and is_word("meeting") and not is_word("mccall")
 
 
 def test_camera_backend_and_names():
-    from lipflow.camera import list_cameras, resolve_camera
+    from mouthpiece.camera import list_cameras, resolve_camera
     assert list_cameras() == [] and resolve_camera("auto") == 0 and resolve_camera(2) == 2
 
 
@@ -61,7 +61,7 @@ def tk_root():
 
 
 def test_overlay_shows_text_and_video_without_taking_focus(tk_root):
-    from lipflow.win.hud import HUD
+    from mouthpiece.win.hud import HUD
     hud = HUD(tk_root)
     assert hud.hwnd
     hud.show("listening", "Listening", "")
@@ -76,14 +76,14 @@ def test_overlay_shows_text_and_video_without_taking_focus(tk_root):
 
 
 def test_tray_icons():
-    from lipflow.win.hud import tray_image
+    from mouthpiece.win.hud import tray_image
     assert tray_image(False).size == (64, 64) and tray_image(True).getpixel((32, 32))[3] == 255
 
 
 def test_setup_window_pages(tk_root, tmp_path, monkeypatch):
     import queue
-    monkeypatch.setattr("lipflow.practice.CLIPS", str(tmp_path))
-    from lipflow.win.setup import Setup
+    monkeypatch.setattr("mouthpiece.practice.CLIPS", str(tmp_path))
+    from mouthpiece.win.setup import Setup
     camera = types.SimpleNamespace(track_always=False, ensure_open=lambda: None)
     app = types.SimpleNamespace(root=tk_root, key_name="Right Ctrl", camera=camera, onboarding=None,
                                 onboarding_text="", reader=None, jobs=queue.Queue(), settings={},
@@ -109,6 +109,6 @@ def test_setup_window_pages(tk_root, tmp_path, monkeypatch):
 
 
 def test_windows_app_imports():
-    import lipflow.win.app as A
+    import mouthpiece.win.app as A
     assert A.key_label("right_control") == "Right Ctrl"
-    assert "-m lipflow" in A.Lipflow._autostart_command()
+    assert "-m mouthpiece" in A.Mouthpiece._autostart_command()

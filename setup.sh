@@ -22,10 +22,10 @@ uv run python -c "from mlx_lm import load; load('mlx-community/Qwen3-0.6B-4bit')
 
 # The app bundle: its own permissions, Spotlight/Launchpad, Login Items
 if [[ "${1:-}" != "--no-app" ]]; then
-  rm -rf ~/Applications/Lipflow.app  # older installs went here
+  rm -rf ~/Applications/Mouthpiece.app  # older installs went here
   uv run python scripts/make_app.py --dest /Applications
 fi
 
 echo
-echo "Done. Open Lipflow from Spotlight (or: open /Applications/Lipflow.app)."
+echo "Done. Open Mouthpiece from Spotlight (or: open /Applications/Mouthpiece.app)."
 echo "The first launch walks you through permissions, your Wispr Flow words, and ~24 practice sentences."

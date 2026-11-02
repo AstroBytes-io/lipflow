@@ -1,4 +1,4 @@
-"""Settings: keep training when you want to, plus the few options Lipflow has."""
+"""Settings: keep training when you want to, plus the few options Mouthpiece has."""
 from __future__ import annotations
 
 import os
@@ -45,7 +45,7 @@ class Settings(NSObject):
         self.app = app
         self.win = GlassWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(0, 0, SW, SH), NSWindowStyleMaskBorderless, NSBackingStoreBuffered, False)
-        self.win.setTitle_("Lipflow Settings")
+        self.win.setTitle_("Mouthpiece Settings")
         self.win.setMovableByWindowBackground_(True)
         self.win.setOpaque_(False)
         self.win.setBackgroundColor_(NSColor.clearColor())

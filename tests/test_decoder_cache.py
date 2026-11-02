@@ -6,7 +6,7 @@ import torch
 
 from espnet.nets.batch_beam_search import BatchBeamSearch
 from espnet.nets.pytorch_backend.transformer.decoder import Decoder
-from lipflow.vsr import LipReader
+from mouthpiece.vsr import LipReader
 
 
 @pytest.mark.parametrize("replacement_decoder", [False, True])

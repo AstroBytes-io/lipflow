@@ -49,7 +49,7 @@ class MultiHeadedAttention(nn.Module):
         n_batch = query.size(0)
         q = self.linear_q(query).view(n_batch, -1, self.h, self.d_k)
         q = q.transpose(1, 2)  # (batch, head, time1, d_k)
-        # lipflow: during beam search the encoder memory arrives as a broadcast view
+        # mouthpiece: during beam search the encoder memory arrives as a broadcast view
         # (stride 0 over the beam) and is identical at every step, so project it once
         # per utterance instead of once per hypothesis per token.
         if not self.training and key is value and key.dim() == 3 and key.stride(0) == 0:

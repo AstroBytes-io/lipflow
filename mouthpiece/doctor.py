@@ -1,4 +1,4 @@
-"""`lipflow doctor`: check everything the app needs before you hit the hotkey."""
+"""`mouthpiece doctor`: check everything the app needs before you hit the hotkey."""
 from __future__ import annotations
 
 import os
@@ -24,7 +24,7 @@ def doctor() -> int:
     else:
         fix_models = "run ./setup.sh"
 
-    print("Lipflow doctor\n")
+    print("Mouthpiece doctor\n")
     for rel, size in [("vsr/model.pth", 900e6), ("lm/model.pth", 200e6), ("face_landmarker.task", 3e6)]:
         path = os.path.join(MODELS, rel)
         line(os.path.exists(path) and os.path.getsize(path) > size, f"model file {rel}", fix_models)
@@ -45,7 +45,7 @@ def doctor() -> int:
     c = Cleaner()
     line(True, f"cleanup backend: {c.describe()}"
          + ("  (set ANTHROPIC_API_KEY or run Ollama for much better accuracy)" if c.backend == "basic" else ""))
-    print("\nAll good." if ok else "\nFix the ✗ items above, then run `lipflow`.")
+    print("\nAll good." if ok else "\nFix the ✗ items above, then run `mouthpiece`.")
     return 0 if ok else 1
 
 

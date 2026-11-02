@@ -3,8 +3,8 @@ import os
 import numpy as np
 import pytest
 
-from lipflow.face import STABLE_REFERENCE, mouth_rois
-from lipflow.vsr import MODEL_FPS, LipReader
+from mouthpiece.face import STABLE_REFERENCE, mouth_rois
+from mouthpiece.vsr import MODEL_FPS, LipReader
 
 SAMPLE = os.path.join(os.path.dirname(__file__), "..", "samples", "2016-03-12.mov")
 
@@ -32,7 +32,7 @@ def test_tensor_layout():
 
 @pytest.mark.skipif(not os.path.exists(SAMPLE), reason="run ./setup.sh --samples")
 def test_reads_a_real_clip():
-    from lipflow.offline import transcribe_file
+    from mouthpiece.offline import transcribe_file
     text = transcribe_file(SAMPLE, LipReader(beam_size=10), 20.4, 28.1)
     words = set(text.split())
     truth = set("BORN IN NEW YORK CITY AND RAISED MOSTLY IN CHICAGO NANCY DAVIS GRADUATED FROM SMITH COLLEGE".split())
@@ -50,7 +50,7 @@ def test_face_crop_offsets_give_the_same_mouth_patch():
 
 
 def test_mic_segment_aligns_to_video_clock():
-    from lipflow import mic
+    from mouthpiece import mic
     rate = mic.RATE
     t = np.arange(rate * 2) / rate
     wave = np.sin(2 * np.pi * 5 * t).astype(np.float32)
@@ -63,7 +63,7 @@ def test_mic_segment_aligns_to_video_clock():
 
 def test_mic_lag_found_from_mouth_vs_loudness():
     """A Bluetooth mic's audio arrives late; calibrate() recovers the delay and segment() undoes it."""
-    from lipflow import mic
+    from mouthpiece import mic
     rng = np.random.default_rng(1)
     rate, n = mic.RATE, 100  # 4 s of video at 25 fps
     mouth = np.convolve(rng.random(n + 10), np.ones(5) / 5, "valid")[:n].astype(np.float32)  # smooth open/close

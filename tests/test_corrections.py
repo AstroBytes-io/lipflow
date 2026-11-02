@@ -1,4 +1,4 @@
-from lipflow.corrections import find_correction, inserted_span
+from mouthpiece.corrections import find_correction, inserted_span
 
 P = "Hello Miguel, I am sending you a message with my new school."
 

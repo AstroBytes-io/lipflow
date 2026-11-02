@@ -100,7 +100,7 @@ class Camera:
             return
         self._stop.clear()
         self.ready.clear()
-        self._thread = threading.Thread(target=self._run, name="lipflow-camera", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="mouthpiece-camera", daemon=True)
         self._thread.start()
 
     def close(self):

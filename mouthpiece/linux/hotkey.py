@@ -113,7 +113,7 @@ class EvdevHook:
         self._devices = open_keyboards()
         if not self._devices:
             return False
-        self._thread = threading.Thread(target=self._loop, name="lipflow-keys", daemon=True)
+        self._thread = threading.Thread(target=self._loop, name="mouthpiece-keys", daemon=True)
         self._thread.start()
         return True
 

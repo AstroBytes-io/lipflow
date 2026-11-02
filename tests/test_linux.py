@@ -13,22 +13,22 @@ pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="Linux only")
 
 
 def test_data_lives_in_xdg(monkeypatch):
-    monkeypatch.delenv("LIPFLOW_HOME", raising=False)
-    monkeypatch.setenv("XDG_DATA_HOME", "/tmp/lipflow-xdg")
-    import lipflow.paths as paths
+    monkeypatch.delenv("MOUTHPIECE_HOME", raising=False)
+    monkeypatch.setenv("XDG_DATA_HOME", "/tmp/mouthpiece-xdg")
+    import mouthpiece.paths as paths
     try:
-        assert importlib.reload(paths).HOME == "/tmp/lipflow-xdg/Lipflow"
+        assert importlib.reload(paths).HOME == "/tmp/mouthpiece-xdg/Mouthpiece"
     finally:
         importlib.reload(paths)
 
 
 def test_xdg_default_is_local_share(monkeypatch):
-    monkeypatch.delenv("LIPFLOW_HOME", raising=False)
+    monkeypatch.delenv("MOUTHPIECE_HOME", raising=False)
     monkeypatch.delenv("XDG_DATA_HOME", raising=False)
-    monkeypatch.setenv("HOME", "/home/lipflow")
-    import lipflow.paths as paths
+    monkeypatch.setenv("HOME", "/home/mouthpiece")
+    import mouthpiece.paths as paths
     try:
-        assert importlib.reload(paths).HOME == "/home/lipflow/.local/share/Lipflow"
+        assert importlib.reload(paths).HOME == "/home/mouthpiece/.local/share/Mouthpiece"
     finally:
         importlib.reload(paths)
 
@@ -49,7 +49,7 @@ def _stub_tools(monkeypatch, paste, present):
 
 
 def test_wayland_clipboard_and_paste_use_wl_tools(monkeypatch):
-    from lipflow.linux import paste
+    from mouthpiece.linux import paste
     monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
     calls = _stub_tools(monkeypatch, paste, {"wl-copy", "wl-paste", "wtype", "xclip", "xdotool"})
@@ -60,7 +60,7 @@ def test_wayland_clipboard_and_paste_use_wl_tools(monkeypatch):
 
 
 def test_wayland_display_without_session_type(monkeypatch):
-    from lipflow.linux import paste
+    from mouthpiece.linux import paste
     monkeypatch.delenv("XDG_SESSION_TYPE", raising=False)
     monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-1")
     calls = _stub_tools(monkeypatch, paste, {"wl-copy", "wtype"})
@@ -70,7 +70,7 @@ def test_wayland_display_without_session_type(monkeypatch):
 
 
 def test_wayland_without_wtype_uses_ydotool(monkeypatch):
-    from lipflow.linux import paste
+    from mouthpiece.linux import paste
     monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
     calls = _stub_tools(monkeypatch, paste, {"ydotool"})
@@ -79,7 +79,7 @@ def test_wayland_without_wtype_uses_ydotool(monkeypatch):
 
 
 def test_wtype_failure_falls_through_to_ydotool(monkeypatch):
-    from lipflow.linux import paste
+    from mouthpiece.linux import paste
     monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-1")
     calls = []
 
@@ -99,7 +99,7 @@ def test_wtype_failure_falls_through_to_ydotool(monkeypatch):
 
 
 def test_x11_uses_xclip_and_xdotool(monkeypatch):
-    from lipflow.linux import paste
+    from mouthpiece.linux import paste
     monkeypatch.setenv("XDG_SESSION_TYPE", "x11")
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
     calls = _stub_tools(monkeypatch, paste, {"xclip", "xdotool", "wl-copy", "wtype"})
@@ -111,7 +111,7 @@ def test_x11_uses_xclip_and_xdotool(monkeypatch):
 
 
 def test_hyprctl_success_skips_xdotool(monkeypatch):
-    from lipflow.context import Context, _capture_linux
+    from mouthpiece.context import Context, _capture_linux
     calls = []
 
     def which(name):
@@ -130,7 +130,7 @@ def test_hyprctl_success_skips_xdotool(monkeypatch):
 
 
 def test_hyprctl_failure_falls_through_to_xdotool(monkeypatch):
-    from lipflow.context import Context, _capture_linux
+    from mouthpiece.context import Context, _capture_linux
     calls = []
 
     def which(name):
@@ -150,7 +150,7 @@ def test_hyprctl_failure_falls_through_to_xdotool(monkeypatch):
 
 
 def test_skips_virtual_paste_device():
-    from lipflow.linux.hotkey import KEY_A, KEY_ENTER, KEY_RIGHTCTRL, is_keyboard, key_role
+    from mouthpiece.linux.hotkey import KEY_A, KEY_ENTER, KEY_RIGHTCTRL, is_keyboard, key_role
     keys = {KEY_A, KEY_ENTER, KEY_RIGHTCTRL}
     assert is_keyboard("AT Translated Set 2 keyboard", keys)
     assert not is_keyboard("ydotool virtual device", keys)
@@ -160,7 +160,7 @@ def test_skips_virtual_paste_device():
 
 
 def test_sway_title_when_hyprctl_missing(monkeypatch):
-    from lipflow.context import Context, _capture_linux
+    from mouthpiece.context import Context, _capture_linux
     tree = {"nodes": [{"name": "Alacritty", "app_id": "Alacritty", "focused": True}]}
 
     def which(name):

@@ -195,5 +195,5 @@ def capture(max_chars: int = 600) -> Context:
                     ctx.near_text = ph
         ctx.names = extract_names(ctx.title, ctx.near_text)
     except Exception as e:  # permissions, sandboxed apps, odd elements
-        print(f"[lipflow] context unavailable: {e.__class__.__name__}")
+        print(f"[mouthpiece] context unavailable: {e.__class__.__name__}")
     return ctx

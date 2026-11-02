@@ -24,14 +24,14 @@ jobs:
       - name: Shortcut points at the venv's pythonw
         shell: pwsh
         run: |
-          $lnk = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Lipflow.lnk"
+          $lnk = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Mouthpiece.lnk"
           $t = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk).TargetPath
           Write-Host $t
           if (-not (Test-Path $t)) { throw "shortcut target missing: $t" }
       - name: Tests (includes reading a real clip on the CPU)
         run: uv run pytest -q -rs
-      - name: lipflow doctor (no camera on CI, so this only prints)
+      - name: mouthpiece doctor (no camera on CI, so this only prints)
         shell: pwsh
-        run: uv run lipflow doctor; exit 0
+        run: uv run mouthpiece doctor; exit 0
       - name: Lip-read a sample video end to end
-        run: uv run lipflow file samples/2016-03-12.mov --start 20.4 --end 28.1 --cleanup basic
+        run: uv run mouthpiece file samples/2016-03-12.mov --start 20.4 --end 28.1 --cleanup basic

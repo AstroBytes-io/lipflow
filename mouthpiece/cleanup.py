@@ -8,9 +8,9 @@ before can usually recover the intended sentence.
 Backends. You pick one in the menu (saved as "cleanup" in settings) or with --cleanup; "auto" uses
 the first available of claude, local, ollama, basic:
   claude  – ANTHROPIC_API_KEY (or ANTHROPIC_AUTH_TOKEN) set
-  codex   – your ChatGPT plan through the Codex CLI (`codex login`); LIPFLOW_CODEX_MODEL; only if chosen
-  local   – a tiny on-device model via MLX (Qwen3-0.6B 4-bit, ~350 MB, ~0.2 s); LIPFLOW_LOCAL_MODEL
-  ollama  – a local Ollama server on :11434 (LIPFLOW_OLLAMA_MODEL, default qwen3:4b); only if chosen
+  codex   – your ChatGPT plan through the Codex CLI (`codex login`); MOUTHPIECE_CODEX_MODEL; only if chosen
+  local   – a tiny on-device model via MLX (Qwen3-0.6B 4-bit, ~350 MB, ~0.2 s); MOUTHPIECE_LOCAL_MODEL
+  ollama  – a local Ollama server on :11434 (MOUTHPIECE_OLLAMA_MODEL, default qwen3:4b); only if chosen
   basic   – offline casing + punctuation rules
 """
 from __future__ import annotations
@@ -197,21 +197,21 @@ class Cleaner:
         self._similar: list[str] = []
         # Measured on real dictations (WER): free edits 31.5%, format-only 19.0%, one edit using only
         # the guesses' words or words you commonly use, with those words in the prompt: 17.9%.
-        self.strict = os.environ.get("LIPFLOW_LOCAL_STRICT", "0") == "1"
+        self.strict = os.environ.get("MOUTHPIECE_LOCAL_STRICT", "0") == "1"
         self.max_edits: "int | None" = 1
         self.prompt_common = True
         from .personal import Personal
         self.personal = Personal()
         if self.backend == "local":
-            self.model = os.environ.get("LIPFLOW_LOCAL_MODEL", LOCAL_MODEL)
+            self.model = os.environ.get("MOUTHPIECE_LOCAL_MODEL", LOCAL_MODEL)
         elif self.backend == "claude":
             import anthropic
             self._client = anthropic.Anthropic(timeout=8.0, max_retries=1)
-            self.model = os.environ.get("LIPFLOW_MODEL", "claude-opus-5-5")
+            self.model = os.environ.get("MOUTHPIECE_MODEL", "claude-opus-5-5")
         elif self.backend == "codex":
-            self.model = os.environ.get("LIPFLOW_CODEX_MODEL")  # None: Codex's own default
+            self.model = os.environ.get("MOUTHPIECE_CODEX_MODEL")  # None: Codex's own default
         elif self.backend == "ollama":
-            self.model = os.environ.get("LIPFLOW_OLLAMA_MODEL", "qwen3:4b")
+            self.model = os.environ.get("MOUTHPIECE_OLLAMA_MODEL", "qwen3:4b")
 
     @staticmethod
     def _ollama_up() -> bool:

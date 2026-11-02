@@ -1,4 +1,4 @@
-"""Learn from your corrections: when you fix a word Lipflow typed, that clip + your fixed sentence
+"""Learn from your corrections: when you fix a word Mouthpiece typed, that clip + your fixed sentence
 becomes training data (like Wispr Flow does), so accuracy improves without practice sessions.
 
 After a paste, the same text field is re-read a few times over 30 s. The dictated span is found by
@@ -125,6 +125,6 @@ class Watcher:
             self.done = True
             if self.best:
                 save(self.rois, self.pasted, self.best, self.raw)
-                print(f"[lipflow] learned from your correction ({len(_words(self.best))} words)")
+                print(f"[mouthpiece] learned from your correction ({len(_words(self.best))} words)")
                 if self.on_saved:
                     self.on_saved()

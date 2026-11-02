@@ -1,7 +1,7 @@
 """Global push-to-talk key on macOS via a Quartz event tap (listen-only). Timing lives in ptt.py.
 
 Needs "Input Monitoring" (and for pasting, "Accessibility") permission for whatever app
-launched lipflow: Lipflow.app, or your terminal.
+launched mouthpiece: Mouthpiece.app, or your terminal.
 """
 from __future__ import annotations
 

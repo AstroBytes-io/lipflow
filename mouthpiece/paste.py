@@ -8,7 +8,7 @@ import Quartz
 from AppKit import NSPasteboard, NSPasteboardTypeString
 
 _V = 9  # kVK_ANSI_V
-MARK = 0x11FF10  # kCGEventSourceUserData on every event Lipflow posts, so its own hotkey tap ignores them
+MARK = 0x11FF10  # kCGEventSourceUserData on every event Mouthpiece posts, so its own hotkey tap ignores them
 
 
 def _post(ev, flags=0):

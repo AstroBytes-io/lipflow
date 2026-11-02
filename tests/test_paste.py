@@ -1,5 +1,5 @@
 """Opt-in: this really presses ⌘V in whatever app is focused. Focus an empty text field, then
-LIPFLOW_TEST_PASTE=1 uv run pytest tests/test_paste.py"""
+MOUTHPIECE_TEST_PASTE=1 uv run pytest tests/test_paste.py"""
 import os
 
 import pytest
@@ -7,10 +7,10 @@ import pytest
 Quartz = pytest.importorskip("Quartz")
 from AppKit import NSPasteboard, NSPasteboardTypeString  # noqa: E402
 
-import lipflow.paste as P  # noqa: E402
+import mouthpiece.paste as P  # noqa: E402
 
-pytestmark = pytest.mark.skipif(os.environ.get("LIPFLOW_TEST_PASTE") != "1",
-                                reason="presses ⌘V for real; set LIPFLOW_TEST_PASTE=1")
+pytestmark = pytest.mark.skipif(os.environ.get("MOUTHPIECE_TEST_PASTE") != "1",
+                                reason="presses ⌘V for real; set MOUTHPIECE_TEST_PASTE=1")
 
 
 def test_paste_posts_cmd_v_and_restores_clipboard(monkeypatch):
@@ -35,9 +35,9 @@ def test_paste_posts_cmd_v_and_restores_clipboard(monkeypatch):
     real = P._press_cmd_v
     monkeypatch.setattr(P, "_press_cmd_v", lambda: (on_clipboard.append(pb.stringForType_(NSPasteboardTypeString)), real()))
 
-    P.paste_text("lipflow test", restore_after=0.2)
+    P.paste_text("mouthpiece test", restore_after=0.2)
     Quartz.CFRunLoopRunInMode(Quartz.kCFRunLoopDefaultMode, 0.6, False)
 
-    assert on_clipboard == ["lipflow test"]
+    assert on_clipboard == ["mouthpiece test"]
     assert (9, True) in seen  # V with Command
     assert pb.stringForType_(NSPasteboardTypeString) == before
