@@ -170,7 +170,7 @@ def _embed_python(pyhome: str) -> str:
     # Precompile (+~190 MB, launch ~5 s → ~2 s). unchecked-hash: valid whatever the mtimes after
     # copying/DMG, and the launcher never writes .pyc into the signed bundle. A few files in deps
     # are not valid Python 3.12 (templates, py2 leftovers), hence no check=True.
-    subprocess.run([os.path.join(pyhome, "bin", pyver), "-I", "-m", "compileall", "-q", "-j0",
+    subprocess.run([os.path.join(pyhome, "bin", pyver), "-I", "-m", "compileall", "-q", "-f", "-j0",  # -f: stdlib ships timestamp .pyc that copies would rewrite
                     "--invalidation-mode", "unchecked-hash", os.path.join(pyhome, "lib")], capture_output=True)
     return base
 

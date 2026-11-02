@@ -483,8 +483,8 @@ class Mouthpiece(NSObject):
                     print(f"[mouthpiece] cleanup: {self.cleaner.describe()}")
                     ui(self.cleanup_item.setTitle_, f"Cleanup: {self.cleaner.label()}")
                     win = getattr(self, "settings_win", None)
-                    if win is not None and win.win.isVisible():
-                        ui(win.build)  # its "Using: …" line
+                    if win is not None:
+                        ui(lambda w=win: w.win.isVisible() and w.build())  # its "Using: …" line
                 elif job[0] == "reload":  # e.g. face model reset from Settings
                     self.reader = LipReader(beam_size=self.opts.beam)
                     self.reader.warmup()
@@ -516,16 +516,31 @@ class Mouthpiece(NSObject):
             from . import weights
             bad = weights.missing(MODELS) + weights.corrupt(MODELS)
             if not bad:
-                raise
-            print(f"[mouthpiece] damaged model files, downloading again: {[b[0] for b in bad]}")
-            for rel, *_ in bad:
-                try:
-                    os.remove(os.path.join(MODELS, rel))
-                except OSError:
-                    pass
-            ui(self.hud.hide)
-            ui(self._need_download, "Some model files were damaged. Download them again to continue.")
-            return
+                import traceback
+                traceback.print_exc()
+                try:  # shared weights are fine, so a broken face model (or the GPU) is the likely cause
+                    self.reader = LipReader(beam_size=self.opts.beam, personal=False, device="cpu")
+                    self.reader.warmup()
+                    ui(self.hud.show, "error", "Using the standard lip reader",
+                       "Your face model didn't load. Reset it in Settings if this keeps happening.", 6.0)
+                except Exception:
+                    traceback.print_exc()
+                    ui(self.hud.hide)
+                    ui(self._set_state, "Couldn't start", "exclamationmark.triangle")
+                    ui(alert, "Mouthpiece couldn't start the lip reader",
+                       "Quit and reopen Mouthpiece. If it happens again, Settings → Open my data folder and send "
+                       "us Mouthpiece.log.")
+                    return
+            else:
+                print(f"[mouthpiece] damaged model files, downloading again: {[b[0] for b in bad]}")
+                for rel, *_ in bad:
+                    try:
+                        os.remove(os.path.join(MODELS, rel))
+                    except OSError:
+                        pass
+                ui(self.hud.hide)
+                ui(self._need_download, "Some model files were damaged. Download them again to continue.")
+                return
         if self.cleaner.backend == "local":
             ui(self.hud.set_text, "Loading the text-cleanup model…")
         self._warm_cleanup()
@@ -573,7 +588,7 @@ class Mouthpiece(NSObject):
         self.av_reader = av.AVReader(beam_size=self.opts.beam)
         self.av_reader.warmup_av()
         print("[mouthpiece] whisper mode ready (lips + audio)")
-        if self.mic.keep_open:
+        if self.mic.keep_open and self.settings.get("whisper"):
             self.mic.open()  # Bluetooth mics: switch the headset to call mode now, not on your first word
         if self.mic.error:
             ui(self.hud.show, "error", "Whisper mic not connected", "Reading lips only until it's back", 4.0)
@@ -590,11 +605,12 @@ class Mouthpiece(NSObject):
         mic = self.mic
         if self.settings.get("mic_lag_auto", True):
             old = mic.lag
-            mic.calibrate(rec.audio, ts[0], rec.mouth_open[:len(ts)])
+            mo = rec.mouth_open[:len(ts)]
+            mic.calibrate(rec.audio, ts[0], [mo[i] for i in LipReader.resample(ts[:len(mo)], len(mo))])
             if abs(mic.lag - old) >= 0.02:
                 print(f"[mouthpiece] mic lag {old * 1000:.0f} -> {mic.lag * 1000:.0f} ms ({mic.name or 'built-in'})")
                 self.settings.setdefault("mic_lags", {})[mic.name or "auto"] = mic.lag
-                save_settings(self.settings)
+                ui(save_settings, self.settings)
         wave = segment(rec.audio, ts[0], rois.shape[0], lag=mic.lag)
         if wave is None:
             return None

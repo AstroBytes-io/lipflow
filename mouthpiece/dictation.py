@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 
 import numpy as np
@@ -29,7 +30,10 @@ def load_settings() -> dict:
 
 def save_settings(d: dict):
     os.makedirs(os.path.dirname(SETTINGS), exist_ok=True)
-    json.dump(d, open(SETTINGS, "w"), indent=2)
+    tmp = f"{SETTINGS}.{os.getpid()}.{threading.get_ident()}.tmp"
+    with open(tmp, "w") as f:
+        json.dump(d, f, indent=2)
+    os.replace(tmp, SETTINGS)  # a crash mid-write never leaves a truncated settings.json
 
 
 def clip_problem(rec) -> "tuple[str, str] | None":

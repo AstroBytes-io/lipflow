@@ -30,6 +30,7 @@ class Mic:
         self._recording = False
         self._chunks: list[tuple[float, np.ndarray]] = []
         self._lock = threading.Lock()
+        self._stream_lock = threading.RLock()  # open/close run on both the UI and the worker thread
         self.error: str | None = None
 
     @property
@@ -60,19 +61,20 @@ class Mic:
 
     def open(self):
         """Start the input stream (no-op if it's already running)."""
-        if self._stream is not None and self._stream.active:
-            return
-        self.close()
-        import sounddevice as sd
-        try:
-            self._stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32", device=self._index(),
-                                          blocksize=0, callback=self._cb)
-            self._stream.start()
-            self.error = None
-        except Exception as e:
-            self.error = str(e)
-            self._stream = None
-            print(f"[mouthpiece] microphone unavailable: {e}")
+        with self._stream_lock:
+            if self._stream is not None and self._stream.active:
+                return
+            self.close()
+            import sounddevice as sd
+            try:
+                self._stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32", device=self._index(),
+                                              blocksize=0, callback=self._cb)
+                self._stream.start()
+                self.error = None
+            except Exception as e:
+                self.error = str(e)
+                self._stream = None
+                print(f"[mouthpiece] microphone unavailable: {e}")
 
     def start(self):
         with self._lock:
@@ -100,7 +102,8 @@ class Mic:
 
     def close(self):
         self._recording = False
-        s, self._stream = self._stream, None
+        with self._stream_lock:
+            s, self._stream = self._stream, None
         if s is not None:
             try:
                 s.stop()

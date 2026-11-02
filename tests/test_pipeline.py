@@ -79,3 +79,22 @@ def test_mic_lag_found_from_mouth_vs_loudness():
     assert np.allclose(mic.segment(chunks, t0, n, lag=m.lag), whisper, atol=1e-6)  # back in sync
     assert np.corrcoef(mic.segment(chunks, t0, n)[:640 * 90], whisper[:640 * 90])[0, 1] < 0.5  # lag=0 isn't
     assert mic.estimate_lag(chunks, t0, mouth[:20]) is None  # too short to trust
+
+
+def test_mic_lag_with_30fps_camera():
+    """Mac cameras run ~30 fps; the app resamples mouth_open to 25 fps before calibrating."""
+    from mouthpiece import mic
+    from mouthpiece.vsr import LipReader
+    rng = np.random.default_rng(2)
+    rate, secs, lag, t0 = mic.RATE, 4.0, 0.2, 1000.0
+    knots_t = np.arange(0, secs + 1, 0.12)
+    knots = rng.random(len(knots_t))
+    f = lambda t: np.interp(t, knots_t, knots)                    # one smooth open/close pattern
+    ts = t0 + np.arange(0, secs, 1 / 30)                          # camera frame times
+    mouth30 = f(ts - t0).astype(np.float32)
+    ta = np.arange(int(secs * rate)) / rate                      # audio follows the mouth, arrives late
+    whisper = (rng.standard_normal(len(ta)) * f(ta)).astype(np.float32)
+    stamp = t0 - mic.CAMERA_LATENCY + lag
+    chunks = [(stamp + i / rate, whisper[i:i + 1600]) for i in range(0, len(whisper), 1600)]
+    mouth25 = [mouth30[i] for i in LipReader.resample(list(ts), len(ts))]
+    assert abs(mic.Mic("AirPods").calibrate(chunks, t0, mouth25) - lag) <= 0.04

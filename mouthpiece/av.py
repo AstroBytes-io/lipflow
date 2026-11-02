@@ -32,13 +32,19 @@ def download(progress=None):
     cfg = os.path.join(AV_DIR, "config.json")
     if not os.path.exists(cfg):
         weights.fetch(URL + "config.json", cfg)
-    # ponytail: no pinned hash yet (no known-good copy on the build machine); pin it once there is one
-    weights.fetch(URL + "model.safetensors", os.path.join(AV_DIR, "model.safetensors"),
+    weights.fetch(URL + "model.safetensors", os.path.join(AV_DIR, "model.safetensors"), sha=AV_SHA, size=AV_SIZE,
                   progress=progress and (lambda n: progress(min(99.0, 100 * n / 1.8e9))))
 
 
+# Hugging Face's LFS metadata for model.safetensors (api/models/<repo>/tree/main), 2026-11-01
+AV_SHA = "1e013dbec3ba367a2c5da7d12a8e9d70c181512d39bea630a694a20cf17470cc"
+AV_SIZE = 1776366192
+
+
 def available() -> bool:
-    return os.path.exists(os.path.join(AV_DIR, "model.safetensors"))
+    p = os.path.join(AV_DIR, "model.safetensors")
+    # ponytail: size check only (hashing 1.8 GB every launch is slow); fetch() verified the hash on download
+    return os.path.exists(p) and os.path.getsize(p) == AV_SIZE
 
 
 class AVReader(LipReader):

@@ -44,6 +44,13 @@ static int check(PyStatus s, PyConfig *c) {
 }
 
 int main(int argc, char **argv) {
+    /* A first launch (Gatekeeper/LaunchServices) can still pass -psn_0_NNN; drop it so it isn't
+       read as a subcommand and the GUI run still logs to the file. */
+    int n = 1;
+    for (int i = 1; i < argc; i++)
+        if (strncmp(argv[i], "-psn_", 5) != 0) argv[n++] = argv[i];
+    argc = n;
+    argv[argc] = NULL;
     /* Finder/open launch the GUI with no arguments; its output goes to the log.
        A subcommand (`Mouthpiece doctor`) is a terminal run: keep stdout. */
     if (argc < 2) redirect_log();
