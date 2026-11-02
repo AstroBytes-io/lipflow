@@ -7,7 +7,7 @@ before can usually recover the intended sentence.
 
 Backends. You pick one in the menu (saved as "cleanup" in settings) or with --cleanup; "auto" uses
 the first available of claude, local, ollama, basic:
-  claude  – ANTHROPIC_API_KEY (or ANTHROPIC_AUTH_TOKEN) set
+  claude  – an API key: ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN, else the one saved in Settings (Keychain)
   codex   – your ChatGPT plan through the Codex CLI (`codex login`); MOUTHPIECE_CODEX_MODEL; only if chosen
   local   – a tiny on-device model via MLX (Qwen3-0.6B 4-bit, ~350 MB, ~0.2 s); MOUTHPIECE_LOCAL_MODEL
   ollama  – a local Ollama server on :11434 (MOUTHPIECE_OLLAMA_MODEL, default qwen3:4b); only if chosen
@@ -51,6 +51,47 @@ def _user_prompt(candidates: list[str], context: str, words: "list[str] | None" 
     lines.append("Candidates:")
     lines += [f"{i + 1}. {c}" for i, c in enumerate(candidates)]
     return "\n".join(lines)
+
+
+KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT = "io.astrobytes.mouthpiece", "anthropic-api-key"
+
+
+def api_key() -> "str | None":
+    """The Claude API key: the environment first (terminal runs), then the macOS Keychain (the app,
+    which never sees shell variables). Never print or log it."""
+    return os.environ.get("ANTHROPIC_API_KEY") or _keychain()
+
+
+def _keychain() -> "str | None":
+    if sys.platform != "darwin":
+        return None
+    try:
+        r = subprocess.run(["security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", KEYCHAIN_ACCOUNT, "-w"],
+                           capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return (r.stdout.strip() or None) if r.returncode == 0 else None
+
+
+def save_api_key(key: str) -> None:
+    """Store in the login Keychain. The key goes over stdin (`security -i`), never on a command line."""
+    key = key.strip()
+    if not re.fullmatch(r"[A-Za-z0-9_\-]{20,300}", key):
+        raise ValueError("That doesn't look like an API key")
+    r = subprocess.run(["security", "-i"], capture_output=True, text=True, timeout=10,
+                       input=f"add-generic-password -U -s {KEYCHAIN_SERVICE} -a {KEYCHAIN_ACCOUNT} "
+                             f"-l Mouthpiece -w {key}\n")
+    if r.returncode != 0 or _keychain() != key:
+        raise RuntimeError("Couldn't save the key to the Keychain")
+
+
+def forget_api_key() -> None:
+    subprocess.run(["security", "delete-generic-password", "-s", KEYCHAIN_SERVICE, "-a", KEYCHAIN_ACCOUNT],
+                   capture_output=True, timeout=5)
+
+
+def _have_claude() -> bool:
+    return bool(os.environ.get("ANTHROPIC_AUTH_TOKEN") or api_key())
 
 
 _UNITS = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen " \
@@ -178,8 +219,8 @@ CHOICES = {"auto": "Automatic", "claude": "Claude", "codex": "ChatGPT (Codex CLI
 
 def unavailable(backend: str) -> "str | None":
     """Why this backend can't be used right now, or None. Cheap: runs when the menu is built."""
-    if backend == "claude" and not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
-        return "set ANTHROPIC_API_KEY"
+    if backend == "claude" and not _have_claude():
+        return "add an API key in Settings"
     if backend == "codex" and not shutil.which("codex"):
         return "install the Codex CLI"
     if backend == "local" and sys.platform != "darwin":
@@ -206,7 +247,7 @@ class Cleaner:
             self.model = os.environ.get("MOUTHPIECE_LOCAL_MODEL", LOCAL_MODEL)
         elif self.backend == "claude":
             import anthropic
-            self._client = anthropic.Anthropic(timeout=8.0, max_retries=1)
+            self._client = anthropic.Anthropic(api_key=api_key(), timeout=8.0, max_retries=1)
             self.model = os.environ.get("MOUTHPIECE_MODEL", "claude-opus-5-5")
         elif self.backend == "codex":
             self.model = os.environ.get("MOUTHPIECE_CODEX_MODEL")  # None: Codex's own default
@@ -226,7 +267,7 @@ class Cleaner:
             if why is None:
                 return backend
             print(f"[cleanup] can't use {backend} ({why}); picking automatically")
-        if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+        if _have_claude():
             return "claude"
         try:
             import mlx_lm  # noqa: F401  (Apple Silicon only)

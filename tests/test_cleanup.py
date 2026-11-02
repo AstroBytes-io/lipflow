@@ -1,3 +1,4 @@
+import pytest
 import os
 
 from mouthpiece.cleanup import basic_cleanup, numbers_to_digits, _user_prompt
@@ -151,11 +152,36 @@ def test_backend_is_your_choice(monkeypatch):
     from mouthpiece.cleanup import Cleaner
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    monkeypatch.setattr(cleanup, "_keychain", lambda: None)
     monkeypatch.setattr(Cleaner, "_ollama_up", staticmethod(lambda: False))
     monkeypatch.setattr(cleanup.shutil, "which", lambda name: "/usr/local/bin/codex")
     assert Cleaner("auto").backend != "codex"
     assert Cleaner("codex").backend == "codex"
-    assert cleanup.unavailable("claude") == "set ANTHROPIC_API_KEY"
+    assert cleanup.unavailable("claude") == "add an API key in Settings"
     assert Cleaner("claude").backend == Cleaner("auto").backend
     monkeypatch.setattr(cleanup.shutil, "which", lambda name: None)
     assert cleanup.unavailable("codex") and Cleaner("codex").backend == Cleaner("auto").backend
+
+
+def test_api_key_env_first_and_never_on_a_command_line(monkeypatch):
+    from mouthpiece import cleanup
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-env")
+    assert cleanup.api_key() == "sk-env"
+    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    calls = []
+    store = {}
+
+    def run(argv, input=None, **kw):
+        calls.append((argv, input))
+        if input:
+            store["k"] = input.split(" -w ")[1].strip()
+        return type("R", (), {"returncode": 0 if store else 44, "stdout": store.get("k", "")})()
+
+    monkeypatch.setattr(cleanup.subprocess, "run", run)
+    monkeypatch.setattr(cleanup.sys, "platform", "darwin")
+    key = "sk-ant-api03-" + "a" * 40
+    cleanup.save_api_key(key)
+    assert cleanup.api_key() == key
+    assert all(key not in " ".join(argv) for argv, _ in calls)
+    with pytest.raises(ValueError):
+        cleanup.save_api_key("sk-ant x; rm -rf ~")
