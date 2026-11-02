@@ -22,7 +22,7 @@ def doctor() -> int:
     elif sys.platform == "linux":
         fix_models = "run ./scripts/download-models.sh"
     else:
-        fix_models = "run ./setup.sh"
+        fix_models = "open Mouthpiece: it downloads them on first launch"
 
     print("Mouthpiece doctor\n")
     for rel, size in [("vsr/model.pth", 900e6), ("lm/model.pth", 200e6), ("face_landmarker.task", 3e6)]:
@@ -44,8 +44,8 @@ def doctor() -> int:
     from .cleanup import Cleaner
     c = Cleaner()
     line(True, f"cleanup backend: {c.describe()}"
-         + ("  (set ANTHROPIC_API_KEY or run Ollama for much better accuracy)" if c.backend == "basic" else ""))
-    print("\nAll good." if ok else "\nFix the ✗ items above, then run `mouthpiece`.")
+         + ("  (add a Claude API key in Mouthpiece Settings for much better accuracy)" if c.backend == "basic" else ""))
+    print("\nAll good." if ok else "\nFix the ✗ items above, then reopen Mouthpiece.")
     return 0 if ok else 1
 
 

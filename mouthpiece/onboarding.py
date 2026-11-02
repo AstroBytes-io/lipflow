@@ -1,4 +1,5 @@
-"""First-run setup: permissions → import Wispr Flow → mouth ~24 sentences → train on your face.
+"""First-run setup: download the models (if missing) → permissions → import Wispr Flow → optional Claude
+key → mouth ~24 sentences → train on your face.
 
 The practice step uses the normal push-to-talk key, so onboarding is also the tutorial. Clips are
 saved with their known text under ~/Library/Application Support/Mouthpiece/clips/onboarding. Training
@@ -29,7 +30,7 @@ from AppKit import (
 from Foundation import NSObject, NSTimer
 from PyObjCTools import AppHelper
 
-from .hud import ACCENT, AMBER, GREEN, _glass, _nsimage, _rgb, symbol
+from .hud import ACCENT, AMBER, GREEN, _glass, _nsimage, _rgb, open_privacy, symbol
 
 from .paths import HOME as DIR
 from .practice import CLIPS, N_HELD_OUT, N_SENTENCES, practice_sentences, save_clip, saved_clips  # noqa: F401
@@ -98,8 +99,8 @@ class Onboarding(NSObject):
 
     # -- window --------------------------------------------------------------------
     @objc.python_method
-    def show(self):
-        if self.page is None:
+    def show(self, download: bool = False):
+        if self.page is None and not download:
             self.welcome()
         if not hasattr(self, "_shown"):
             self._shown = True
@@ -168,7 +169,7 @@ class Onboarding(NSObject):
 
     @objc.python_method
     def _steps(self, n):
-        labels = ["Permissions", "Your words", "Practice", "Train"]
+        labels = ["Permissions", "Your words", "Claude", "Practice", "Train"]
         w = 110
         x0 = (WW - w * len(labels)) / 2
         for k, lab in enumerate(labels):
@@ -176,6 +177,10 @@ class Onboarding(NSObject):
             c = _rgb(ACCENT) if cur else _rgb(GREEN, 0.9) if done else _rgb((1, 1, 1), 0.35)
             _text(self.page, NSMakeRect(x0 + k * w, 28, w, 18), ("✓ " if done else "") + lab, 11.5,
                   NSFontWeightSemibold, center=True, color=c)
+
+    @objc.python_method
+    def _key(self):
+        return self.app.opts.key.replace("_", " ").title()
 
     # -- 1. welcome -----------------------------------------------------------------
     @objc.python_method
@@ -185,8 +190,9 @@ class Onboarding(NSObject):
                            "text appears wherever you're typing. Setup takes about 8 minutes: it learns your "
                            "words and your face.")
         _text(p, NSMakeRect(90, 230, WW - 180, 60),
-              "Everything stays on this Mac: the camera video, your practice clips and the models trained "
-              "on them. Nothing is uploaded.", 13, alpha=0.55, center=True)
+              "The camera video, your practice clips and the models trained on them never leave this Mac. "
+              "Only the text you dictate is sent out, and only if you turn on Claude cleanup.",
+              13, alpha=0.55, center=True)
         self._button("Get started", "goPermissions:", (WW - 200) / 2, 130, 200, primary=True)
 
     # -- 2. permissions -------------------------------------------------------------
@@ -241,7 +247,7 @@ class Onboarding(NSObject):
     def restartForPerms_(self, sender):
         from AppKit import NSApplication, NSBundle
         app = str(NSBundle.mainBundle().bundlePath())
-        if not app.endswith(".app"):  # run from a terminal: nothing to reopen
+        if not app.endswith(".app"):  # not running as the app bundle: nothing to reopen
             return
         # Detach so quitting this process does not kill the delayed reopen.
         subprocess.Popen(["/bin/bash", "-c", f"sleep 0.6; open {shlex.quote(app)}"], start_new_session=True)
@@ -252,17 +258,17 @@ class Onboarding(NSObject):
         if AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo) == 0:
             AVCaptureDevice.requestAccessForMediaType_completionHandler_(AVMediaTypeVideo, lambda ok: None)
         else:
-            os.system('open "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"')
+            open_privacy("camera")
 
     def askInput_(self, sender):
         self._asked_perms = True
         if not Quartz.CGRequestListenEventAccess():
-            os.system('open "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"')
+            open_privacy("input")
 
     def askAccess_(self, sender):
         self._asked_perms = True
         if not Quartz.CGRequestPostEventAccess():
-            os.system('open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"')
+            open_privacy("accessibility")
 
     # -- 3. your words (Wispr import) -------------------------------------------------
     def goWords_(self, sender):
@@ -270,7 +276,8 @@ class Onboarding(NSObject):
         have = os.path.exists(PHRASES)
         p = self._new_page("text.book.closed", "Teach it your words",
                            "Most of what you'll mouth is stuff you already say. If you use Wispr Flow, Mouthpiece "
-                           "can learn your phrasing and names from its history, read locally, never uploaded.")
+                           "can learn your phrasing and names from the dictation history Wispr Flow keeps on this "
+                           "Mac. It's read here and never uploaded.")
         self._steps(1)
         self.words_status = _text(p, NSMakeRect(80, 250, WW - 160, 60), "", 13.5, alpha=0.8, center=True)
         if have:
@@ -282,7 +289,7 @@ class Onboarding(NSObject):
         if can:
             self._button("Re-import Wispr Flow" if have else "Import Wispr Flow", "importWispr:",
                          WW / 2 - 190, 110, 180, primary=not have)
-        self._button("Continue" if have else "Skip", "goPractice:", WW / 2 + (10 if can else -90), 110, 180,
+        self._button("Continue" if have else "Skip", "goClaude:", WW / 2 + (10 if can else -90), 110, 180,
                      primary=have or not can)
 
     def importWispr_(self, sender):
@@ -294,7 +301,7 @@ class Onboarding(NSObject):
                 st = import_wispr()
                 msg = f"Imported {st['phrases']:,} phrases."
                 if st["new_names"]:
-                    msg += f" Found {len(st['new_names'])} names and terms (edit them from the menu)."
+                    msg += f" Found {len(st['new_names'])} names and terms (menu → Edit custom words)."
                 msg += " Mouthpiece will learn your phrasing during training."
             except Exception as e:
                 msg = f"Couldn't import: {e}"
@@ -302,6 +309,111 @@ class Onboarding(NSObject):
             AppHelper.callAfter(self.app.cleaner.personal.__init__)
 
         threading.Thread(target=work, daemon=True).start()
+
+    # -- optional: Claude key ------------------------------------------------------------
+    def goClaude_(self, sender):
+        from .cleanup import api_key
+        p = self._new_page("sparkles", "Sharper text with Claude",
+                           "Optional. Lip reading mixes up words that look alike on the lips. A small on-device "
+                           "model fixes most of that. With your own Anthropic API key, Claude does it noticeably "
+                           "better, and only the dictated text is sent to Anthropic.")
+        self._steps(2)
+        have = bool(api_key())
+        self.key_status = _text(p, NSMakeRect(80, 300, WW - 160, 40),
+                                "A Claude API key is already set up." if have else
+                                "Paste a key from console.anthropic.com. It's stored in your Mac's Keychain.",
+                                12.5, alpha=0.6, center=True)
+        if not have:
+            from AppKit import NSSecureTextField
+            self.key_field = NSSecureTextField.alloc().initWithFrame_(NSMakeRect(110, 250, WW - 220, 28))
+            self.key_field.setPlaceholderString_("sk-ant-…")
+            self.key_field.setFont_(NSFont.systemFontOfSize_(13))
+            p.addSubview_(self.key_field)
+            self._button("Save key", "saveKey:", WW / 2 - 190, 110, 180, primary=True)
+        self._button("Continue" if have else "Skip", "goPractice:", WW / 2 + (10 if not have else -90), 110, 180,
+                     primary=have)
+
+    def saveKey_(self, sender):
+        from .cleanup import save_api_key
+        try:
+            save_api_key(str(self.key_field.stringValue()))
+        except Exception as e:
+            self.key_status.setTextColor_(_rgb(AMBER))
+            self.key_status.setStringValue_(f"{e}. Check it and try again, or skip.")
+            return
+        self.key_field.setStringValue_("")
+        self.app.refresh_cleanup()
+        self.goPractice_(None)
+
+    # -- first run: model download ----------------------------------------------------
+    @objc.python_method
+    def goDownload(self, note: str = ""):
+        from . import weights
+        if getattr(self, "downloading", False):
+            return  # already on it; the page shows progress
+        p = self._new_page("arrow.down.circle", "Download the lip-reading models",
+                           note or "Mouthpiece needs its models before it can start: the lip reader (1 GB), a "
+                           "language model (215 MB), its word list and a face tracker. About 1.2 GB, one time.")
+        _text(p, NSMakeRect(70, 236, WW - 140, 108),
+              "About these models: they are the Auto-AVSR lip-reading models, trained on the LRS3 dataset, "
+              "which is licensed for non-commercial research use only. Mouthpiece downloads them straight from "
+              "their public source (Hugging Face, GitHub and Google). They aren't part of Mouthpiece and we don't "
+              "redistribute them. Choosing Accept & Download means you accept those terms.",
+              12, alpha=0.6, center=True)
+        self.dl_bar = NSProgressIndicator.alloc().initWithFrame_(NSMakeRect(100, 204, WW - 200, 12))
+        self.dl_bar.setIndeterminate_(False)
+        self.dl_bar.setMaxValue_(weights.TOTAL)
+        self.dl_bar.setHidden_(True)
+        p.addSubview_(self.dl_bar)
+        self.dl_status = _text(p, NSMakeRect(60, 150, WW - 120, 40), "", 12.5, alpha=0.75, center=True)
+        self.dl_btn = self._button("Accept & Download", "startDownload:", (WW - 220) / 2, 90, 220, primary=True)
+
+    def startDownload_(self, sender):
+        from . import weights
+        from .paths import MODELS
+        self.downloading = True
+        self.dl_btn.setHidden_(True)
+        self.dl_bar.setHidden_(False)
+        self.dl_status.setTextColor_(_rgb((1, 1, 1), 0.75))
+        self.dl_status.setStringValue_("Starting…")
+        last = [0.0]
+
+        def progress(done, total):
+            if time.time() - last[0] > 0.2 or done == total:
+                last[0] = time.time()
+                AppHelper.callAfter(self._dl_progress, done, total)
+
+        def work():
+            try:
+                weights.download_all(MODELS, progress=progress)
+                AppHelper.callAfter(self._dl_done, None)
+            except Exception as e:
+                print(f"[mouthpiece] model download failed: {e!r}")
+                msg = str(e) if isinstance(e, weights.DownloadError) else f"The download stopped ({e})."
+                AppHelper.callAfter(self._dl_done, msg)
+
+        threading.Thread(target=work, name="mouthpiece-download", daemon=True).start()
+
+    @objc.python_method
+    def _dl_progress(self, done, total):
+        self.dl_bar.setMaxValue_(total)
+        self.dl_bar.setDoubleValue_(done)
+        self.dl_status.setStringValue_(f"{done / 1e6:,.0f} of {total / 1e6:,.0f} MB")
+
+    @objc.python_method
+    def _dl_done(self, error):
+        self.downloading = False
+        if error:
+            self.dl_status.setTextColor_(_rgb(AMBER))
+            self.dl_status.setStringValue_(error)
+            self.dl_btn.removeFromSuperview()
+            self.dl_btn = self._button("Try again", "startDownload:", (WW - 220) / 2, 90, 220, primary=True)
+            return
+        self.app.weights_ready()
+        if self.app.settings.get("onboarded"):
+            self.close_(None)
+        else:
+            self.welcome()
 
     # -- 4. practice -----------------------------------------------------------------
     def goPractice_(self, sender):
@@ -313,10 +425,10 @@ class Onboarding(NSObject):
         self.i = 0
         prior = len(done)
         p = self._new_page("quote.bubble", "Mouth each sentence",
-                           "Hold Right Option, silently mouth the sentence at your normal pace, then let go. "
+                           f"Hold {self._key()}, silently mouth the sentence at your normal pace, then let go. "
                            "Face the camera with your mouth in good light."
                            + (f" You have {prior} clips from before; these add to them." if prior else ""))
-        self._steps(2)
+        self._steps(3)
         self.count = _text(p, NSMakeRect(40, 318, WW - 80, 18), "", 12, NSFontWeightSemibold,
                            center=True, color=_rgb(ACCENT))
         self.prompt = _text(p, NSMakeRect(50, 250, WW - 100, 64), "", 23, NSFontWeightMedium, center=True)
@@ -380,7 +492,7 @@ class Onboarding(NSObject):
         p = self._new_page("cpu", "Learning your face",
                            "Training runs on this Mac's GPU and takes about 5 minutes. You can keep working. "
                            "Mouthpiece is paused until it's done.")
-        self._steps(3)
+        self._steps(4)
         self.progress = NSProgressIndicator.alloc().initWithFrame_(NSMakeRect(100, 300, WW - 200, 12))
         self.progress.setIndeterminate_(False)
         self.progress.setMinValue_(0)
@@ -402,7 +514,7 @@ class Onboarding(NSObject):
         def ui():
             self.progress.setDoubleValue_(100)
             self.page_title.setStringValue_("You're all set" if (after is None or kept) else "Setup finished")
-            self.page_sub.setStringValue_("Hold Right Option anywhere and mouth your words. You can retrain any time "
+            self.page_sub.setStringValue_(f"Hold {self._key()} anywhere and mouth your words. You can retrain any time "
                                           "from the menu: more practice sentences make it better.")
             self.page_icon.setImage_(symbol("checkmark", 26))
             self.page_icon.setContentTintColor_(_rgb(GREEN))
@@ -430,4 +542,4 @@ class Onboarding(NSObject):
         self.app.settings["onboarded"] = True  # or the next settings change writes it back out
         self.win.orderOut_(None)
         self.app.camera.track_always = False
-        self.app.hud.show("done", "Mouthpiece is ready", "Hold Right Option anywhere and mouth your words", 3.0)
+        self.app.hud.show("done", "Mouthpiece is ready", f"Hold {self._key()} and mouth your words", 3.0)

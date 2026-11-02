@@ -286,7 +286,12 @@ class Cleaner:
             self._local(["HELLO"], "")
 
     def describe(self) -> str:
+        """For logs and history."""
         return f"{self.backend}" + (f" ({self.model})" if self.model else "")
+
+    def label(self) -> str:
+        """For people: the menu name of the backend in use."""
+        return CHOICES.get(self.backend, self.backend)
 
     _EVERYDAY = set("a an the and or but i you he she it we they me my to of in on at is am are was be do "
                     "so no hi hey ok oh go up us".split())

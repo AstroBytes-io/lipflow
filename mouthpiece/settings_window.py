@@ -14,7 +14,7 @@ from AppKit import (
 )
 from Foundation import NSObject
 
-from .hud import ACCENT, GREEN, _glass, _rgb, symbol
+from .hud import ACCENT, AMBER, GREEN, _glass, _rgb, symbol
 from .onboarding import GlassWindow, _text
 from .paths import HOME, PERSONAL_VSR
 
@@ -85,7 +85,7 @@ class Settings(NSObject):
         _text(p, NSMakeRect(36, SH - 64, 300, 30), "Settings", 22, NSFontWeightBold)
 
         # -- training ------------------------------------------------------------------
-        y = SH - 110
+        y = SH - 96
         _text(p, NSMakeRect(36, y, 400, 18), "TRAINING ON YOUR FACE", 11, NSFontWeightSemibold, color=_rgb(ACCENT))
         n = len(saved_clips())
         t = s.get("training")
@@ -99,48 +99,72 @@ class Settings(NSObject):
         nc = corrections.count()
         if nc:
             line += f" Plus {nc} learned from your corrections."
-        _text(p, NSMakeRect(36, y - 46, SW - 72, 40), line, 13, alpha=0.8)
-        _text(p, NSMakeRect(36, y - 84, SW - 72, 36),
+        _text(p, NSMakeRect(36, y - 42, SW - 72, 38), line, 13, alpha=0.8)
+        _text(p, NSMakeRect(36, y - 76, SW - 72, 32),
               "Each round is 24 new sentences (about 5 minutes) and it retrains on everything you've recorded. "
               "More rounds keep improving it.", 12, alpha=0.55)
-        p.addSubview_(_capsule(self, "Practice & train more", "trainMore:", NSMakeRect(36, y - 132, 220, 36), True))
+        p.addSubview_(_capsule(self, "Practice & train more", "trainMore:", NSMakeRect(36, y - 118, 220, 34), True))
         if os.path.exists(PERSONAL_VSR):
-            p.addSubview_(_capsule(self, "Reset face model", "resetFace:", NSMakeRect(270, y - 132, 170, 36)))
+            p.addSubview_(_capsule(self, "Reset face model", "resetFace:", NSMakeRect(270, y - 118, 170, 34)))
 
-        # -- general -------------------------------------------------------------------
-        y = SH - 296
+        # -- general (rows 34 pt apart) ---------------------------------------------------
+        y = SH - 256
         _text(p, NSMakeRect(36, y, 400, 18), "GENERAL", 11, NSFontWeightSemibold, color=_rgb(ACCENT))
         from .hotkey import KEYS
-        self.key_popup = self._popup(p, y - 40, "Push-to-talk key",
+        self.key_popup = self._popup(p, y - 38, "Push-to-talk key",
                                      [k.replace("_", " ").title() for k in KEYS],
                                      self.app.opts.key.replace("_", " ").title(), "pickKey:")
         from .camera import list_cameras
-        cams = [c["name"] for c in list_cameras()]
+        cams = list_cameras()
         cur = s.get("camera", "auto")
-        cur_name = next((c["name"] for c in list_cameras() if c["id"] == cur), "Automatic (built-in)")
-        self.cam_popup = self._popup(p, y - 82, "Camera", ["Automatic (built-in)"] + cams, cur_name, "pickCam:")
-        self.ctx_switch = self._switch(p, y - 124, "Use names from the app I'm typing in",
+        cur_name = next((c["name"] for c in cams if c["id"] == cur), "Automatic (built-in)")
+        self.cam_popup = self._popup(p, y - 72, "Camera", ["Automatic (built-in)"] + [c["name"] for c in cams],
+                                     cur_name, "pickCam:")
+        self.ctx_switch = self._switch(p, y - 106, "Use names from the app I'm typing in",
                                        s.get("use_context", True), "toggleContext:")
-        self.clip_switch = self._switch(p, y - 166, "Keep my last 100 clips to measure accuracy",
+        self.clip_switch = self._switch(p, y - 140, "Keep my last 100 clips to measure accuracy",
                                         s.get("save_clips", True), "toggleClips:")
-        self.learn_switch = self._switch(p, y - 208, "Learn from words I correct after pasting",
+        self.learn_switch = self._switch(p, y - 174, "Learn from words I correct after pasting",
                                          s.get("learn_corrections", True), "toggleLearn:")
-        self.whisper_switch = self._switch(p, y - 250, "Whisper mode: lips + a soft whisper (uses the mic)",
+        self.whisper_switch = self._switch(p, y - 208, "Whisper mode: lips + a soft whisper (uses the mic)",
                                            s.get("whisper", False), "toggleWhisper:")
         from .mic import input_devices
         mic = self.app.mic
-        self.mic_popup = self._popup(p, y - 290, "Whisper mic", ["Automatic (built-in)"] + input_devices(),
+        self.mic_popup = self._popup(p, y - 242, "Whisper mic", ["Automatic (built-in)"] + input_devices(),
                                      mic.name or "Automatic (built-in)", "pickMic:")
-        _text(p, NSMakeRect(36, y - 322, SW - 72, 18),
-              f"Cleanup: {self.app.cleaner.describe()}   ·   mic lag {mic.lag * 1000:.0f} ms (learned as you whisper)",
+        _text(p, NSMakeRect(36, y - 264, SW - 72, 18),
+              f"Mic lag: {mic.lag * 1000:.0f} ms (learned as you whisper)"
+              + ("" if mic.name is None or mic.name in input_devices() else f". {mic.name} isn't connected."),
               12, alpha=0.55)
-        p.addSubview_(_capsule(self, "Open my data folder", "openData:", NSMakeRect(36, 40, 190, 34)))
-        _text(p, NSMakeRect(240, 48, SW - 276, 18), "Clips, phrases, your trained models. Never uploaded.",
+
+        # -- cleanup: Claude API key ----------------------------------------------------
+        y = SH - 560
+        from .cleanup import api_key
+        _text(p, NSMakeRect(36, y, 400, 18), "TEXT CLEANUP", 11, NSFontWeightSemibold, color=_rgb(ACCENT))
+        in_env = bool(os.environ.get("ANTHROPIC_API_KEY"))
+        have = bool(api_key())
+        self.key_status = _text(p, NSMakeRect(36, y - 22, SW - 72, 18),
+                                f"Using: {self.app.cleaner.label()}. "
+                                + ("Claude key from the environment." if in_env else
+                                   "Claude key saved in your Keychain." if have else
+                                   "Add a Claude API key for sharper text."),
+                                12, alpha=0.55)
+        from AppKit import NSSecureTextField
+        self.key_field = NSSecureTextField.alloc().initWithFrame_(NSMakeRect(36, y - 56, 270, 26))
+        self.key_field.setPlaceholderString_("Claude API key (sk-ant-…)" if not have else "•••••••• saved")
+        self.key_field.setFont_(NSFont.systemFontOfSize_(13))
+        p.addSubview_(self.key_field)
+        p.addSubview_(_capsule(self, "Save", "saveKey:", NSMakeRect(316, y - 57, 90, 28), True))
+        if have and not in_env:
+            p.addSubview_(_capsule(self, "Remove", "removeKey:", NSMakeRect(414, y - 57, 110, 28)))
+
+        p.addSubview_(_capsule(self, "Open my data folder", "openData:", NSMakeRect(36, 28, 190, 32)))
+        _text(p, NSMakeRect(240, 28, SW - 276, 32), "Your clips, phrases and trained models. Never uploaded.",
               11.5, alpha=0.5)
 
     @objc.python_method
-    def _row_label(self, p, y, label):
-        _text(p, NSMakeRect(36, y + 6, 280, 20), label, 13.5)
+    def _row_label(self, p, y, label, w=260):
+        _text(p, NSMakeRect(36, y + 6, w, 20), label, 13.5)
 
     @objc.python_method
     def _popup(self, p, y, label, items, current, action):
@@ -155,7 +179,7 @@ class Settings(NSObject):
 
     @objc.python_method
     def _switch(self, p, y, label, on, action):
-        self._row_label(p, y, label)
+        self._row_label(p, y, label, SW - 36 - 42 - 36 - 12)
         sw = NSSwitch.alloc().initWithFrame_(NSMakeRect(SW - 36 - 42, y + 4, 42, 24))
         sw.setState_(1 if on else 0)
         sw.setTarget_(self)
@@ -233,6 +257,26 @@ class Settings(NSObject):
     def toggleLearn_(self, sender):
         self.app.settings["learn_corrections"] = bool(sender.state())
         self._save()
+
+    def saveKey_(self, sender):
+        from .cleanup import save_api_key
+        key = str(self.key_field.stringValue())
+        if not key.strip():
+            return
+        try:
+            save_api_key(key)
+        except Exception as e:
+            self.key_status.setTextColor_(_rgb(AMBER))
+            self.key_status.setStringValue_(f"{e}. Check it and try again.")
+            return
+        self.app.refresh_cleanup()
+        self.build()
+
+    def removeKey_(self, sender):
+        from .cleanup import forget_api_key
+        forget_api_key()
+        self.app.refresh_cleanup()
+        self.build()
 
     def openData_(self, sender):
         os.system(f'open "{HOME}"')

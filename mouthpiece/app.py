@@ -22,13 +22,12 @@ from .camera import Camera, Recording, mouth_view
 from .cleanup import CHOICES, Cleaner, unavailable
 from .face import mouth_rois
 from .hotkey import KEYS, PushToTalk
-from .hud import HUD, symbol
+from .hud import HUD, alert, symbol
 from AppKit import NSFontWeightRegular
 from .paste import copy_text, paste_text
 from .vsr import LipReader
 
-from .paths import HOME
-from .paths import WHO
+from .paths import HOME, MODELS
 
 from .dictation import (  # noqa: F401  (onboarding/settings import the settings helpers from here)
     HISTORY, JOIN_WINDOW, MAX_SECONDS, MIN_SECONDS, PREVIEW_EVERY, SETTINGS, TAIL_SECONDS, clip_problem,
@@ -77,6 +76,8 @@ class Mouthpiece(NSObject):
         self.onboarding_text = ""
         self.setup = None
         self.loading = True
+        self.downloading = False     # first run: the model weights are still being fetched
+        self._warned_paste = False
         cam = opts.camera if opts.camera != "auto" else self.settings.get("camera", "auto")
         if opts.key == "right_option" and self.settings.get("key"):
             opts.key = self.settings["key"]
@@ -86,33 +87,90 @@ class Mouthpiece(NSObject):
     # -- setup ---------------------------------------------------------------------
     @objc.python_method
     def start(self):
+        from . import weights
         self.hud = HUD.alloc().init()
         self._build_menu()
         self.ptt = PushToTalk(self.opts.key, self.on_start, self.on_stop, self.on_cancel)
         try:
             self.ptt.install()
         except PermissionError as e:
-            print(f"\n[mouthpiece] {e}\n")
+            print(f"[mouthpiece] {e}")
             Quartz.CGRequestListenEventAccess()
-            self.hud.show("error", "Needs Input Monitoring", f"Allow {WHO}, then restart mouthpiece")
         if self.opts.paste and not Quartz.CGPreflightPostEventAccess():
             Quartz.CGRequestPostEventAccess()
-            print(f"[mouthpiece] Allow {WHO} under Privacy & Security → Accessibility so Mouthpiece can paste.")
+        threading.Thread(target=self._worker, name="mouthpiece-model", daemon=True).start()
+        if weights.missing(MODELS):  # first run of the app: nothing to load until the download is done
+            self._need_download()
+            return
+        self._begin_loading()
+        if self.settings.get("onboarded"):  # first run: setup's permissions page covers this
+            AppHelper.callLater(1.5, self._check_permissions)
+
+    @objc.python_method
+    def _need_download(self, note: str = ""):
+        """Main thread: park the app on setup's download page."""
+        self.downloading = True
+        self._set_state("Download the lip-reading models…", "arrow.down.circle", "openSetup:")
+        self.show_setup("download", note=note)
+
+    @objc.python_method
+    def weights_ready(self):
+        """Main thread, from setup's download page."""
+        self.downloading = False
+        self._set_state("Loading model…", "hourglass")
+        self._begin_loading()
+
+    @objc.python_method
+    def _begin_loading(self):
         self._request_camera()
         self.hud.show("reading", "Mouthpiece", "Loading the lip-reading model…")
-        threading.Thread(target=self._worker, name="mouthpiece-model", daemon=True).start()
         self.jobs.put(("load",))
+
+    @objc.python_method
+    def _set_state(self, title, icon, action=None):
+        self.state_item.setTitle_(title)
+        self.state_item.setImage_(symbol(icon, 13, NSFontWeightRegular))
+        self.state_item.setTarget_(self if action else None)
+        self.state_item.setAction_(action)
+        self.state_item.setEnabled_(bool(action))
+
+    @objc.python_method
+    def _check_permissions(self):
+        """One alert listing what's switched off, with a button straight to the right Settings pane."""
+        from AVFoundation import AVCaptureDevice, AVMediaTypeVideo
+        off = []
+        if AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo) in (1, 2):
+            off.append(("camera", "Camera", "to see your lips"))
+        if not Quartz.CGPreflightListenEventAccess():
+            off.append(("input", "Input Monitoring", "to notice when you hold the push-to-talk key"))
+        if self.opts.paste and not Quartz.CGPreflightPostEventAccess():
+            off.append(("accessibility", "Accessibility", "to paste at your cursor"))
+        if off:
+            alert("Mouthpiece needs a permission" if len(off) == 1 else "Mouthpiece needs some permissions",
+                  "Turn Mouthpiece on in System Settings → Privacy & Security:\n\n"
+                  + "\n".join(f"• {name}, {why}" for _, name, why in off)
+                  + "\n\nThen quit and reopen Mouthpiece.", off[0][0])
+        elif self._no_camera():
+            alert("No camera found", "Mouthpiece reads your lips through a camera. Connect one, or use your "
+                  "iPhone as a Continuity Camera, then pick it from the Mouthpiece menu → Camera.")
+
+    @objc.python_method
+    def _no_camera(self) -> bool:
+        from .camera import list_cameras
+        idx = self.camera.index
+        return isinstance(idx, str) and not os.path.exists(idx) and not list_cameras()
 
     @objc.python_method
     def _request_camera(self):
         from AVFoundation import AVCaptureDevice, AVMediaTypeVideo
-        status = AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo)
-        if status == 0:  # not determined: show the system prompt now, from the main thread
-            AVCaptureDevice.requestAccessForMediaType_completionHandler_(
-                AVMediaTypeVideo, lambda granted: print(f"[mouthpiece] camera access {'granted' if granted else 'denied'}"))
-        elif status in (1, 2):
-            print(f"[mouthpiece] camera access is denied: System Settings → Privacy & Security → Camera → enable {WHO}")
-            self.hud.show("error", "No camera access", f"Enable {WHO} in Settings → Privacy → Camera", 6.0)
+        if AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo) == 0:
+            # not determined: show the system prompt now, from the main thread
+            def done(granted):
+                print(f"[mouthpiece] camera access {'granted' if granted else 'denied'}")
+                if not granted:
+                    ui(alert, "Camera access is off", "Mouthpiece can't read your lips without the camera. "
+                       "Turn Mouthpiece on under Privacy & Security → Camera, then reopen it.", "camera")
+            AVCaptureDevice.requestAccessForMediaType_completionHandler_(AVMediaTypeVideo, done)
 
     @objc.python_method
     def _build_menu(self):
@@ -124,8 +182,11 @@ class Mouthpiece(NSObject):
         self._item(menu, f"Hold {key_name} to dictate, double-tap for hands-free", None, icon="keyboard")
         self._cleanup_menu(menu)
         n = len(self.cleaner.personal.phrases)
-        self._item(menu, f"Personalised from {n:,} of your phrases" if n else
-                   "Not personalised yet: run mouthpiece import-wispr", None, icon="person.text.rectangle")
+        from .personal import WISPR_DIR
+        if n:
+            self._item(menu, f"Personalised from {n:,} of your phrases", None, icon="person.text.rectangle")
+        elif os.path.isdir(WISPR_DIR):
+            self._item(menu, "Import your words from Wispr Flow…", "importWords:", icon="person.text.rectangle")
         menu.addItem_(NSMenuItem.separatorItem())
         self._camera_menu(menu)
         self.last_item = self._item(menu, "Copy last dictation", "copyLast:", icon="doc.on.clipboard")
@@ -134,6 +195,7 @@ class Mouthpiece(NSObject):
         self._item(menu, "Practice & train more…", "trainMore:", icon="person.crop.square")
         self._item(menu, "Settings…", "openSettings:", ",", icon="gearshape")
         menu.addItem_(NSMenuItem.separatorItem())
+        self._item(menu, "About Mouthpiece", "about:", icon="info.circle")
         self._item(menu, "Quit Mouthpiece", "quit:", "q", icon="power")
         self.status.setMenu_(menu)
 
@@ -161,7 +223,7 @@ class Mouthpiece(NSObject):
 
     @objc.python_method
     def _cleanup_menu(self, menu):
-        self.cleanup_item = self._item(menu, f"Cleanup: {self.cleaner.describe()}", None, icon="text.badge.checkmark")
+        self.cleanup_item = self._item(menu, f"Cleanup: {self.cleaner.label()}", None, icon="text.badge.checkmark")
         self.cleanup_item.setEnabled_(True)
         sub = NSMenu.alloc().init()
         sub.setAutoenablesItems_(False)  # so items that aren't set up stay greyed out
@@ -185,6 +247,16 @@ class Mouthpiece(NSObject):
         for it in self.cleanup_items:
             it.setState_(1 if it.representedObject() == name else 0)
         self.jobs.put(("cleanup", name))  # on the model thread, between dictations
+
+    @objc.python_method
+    def refresh_cleanup(self):
+        """Main thread: after the API key changes, re-check which backends are usable and re-pick."""
+        for it in self.cleanup_items:
+            name = it.representedObject()
+            why = unavailable(name)
+            it.setTitle_(CHOICES[name] + (f" ({why})" if why else ""))
+            it.setEnabled_(why is None)
+        self.jobs.put(("cleanup", self.cleanup_choice))
 
     def pickCamera_(self, sender):
         cam_id = sender.representedObject()
@@ -235,15 +307,28 @@ class Mouthpiece(NSObject):
             self.settings_win = Settings.alloc().initWithApp_(self)
         self.settings_win.show()
 
+    def importWords_(self, sender):
+        self.show_setup(start_at="words")
+
+    def about_(self, sender):
+        from .about import show_about
+        show_about()
+
     @objc.python_method
-    def show_setup(self, start_at: str = "welcome"):
+    def show_setup(self, start_at: str = "welcome", note: str = ""):
         from .onboarding import Onboarding
         if self.setup is None:
             self.setup = Onboarding.alloc().initWithApp_(self)
+        if start_at == "download" or self.downloading:
+            self.setup.show(download=True)
+            self.setup.goDownload(note)
+            return
         self.camera.track_always = True
         self.setup.show()
         if start_at == "practice":
             self.setup.goPractice_(None)
+        elif start_at == "words":
+            self.setup.goWords_(None)
 
     def openWords_(self, sender):
         from . import vocab
@@ -257,8 +342,20 @@ class Mouthpiece(NSObject):
     # -- hotkey callbacks (main thread) -------------------------------------------
     @objc.python_method
     def on_start(self, hands_free: bool):
+        if self.downloading:
+            self.hud.show("error", "Not ready yet", "Finish downloading the models first", hide_after=2.0)
+            return
         if self.loading:
             self.hud.show("error", "Still loading", "The model is almost ready…", hide_after=1.5)
+            return
+        from AVFoundation import AVCaptureDevice, AVMediaTypeVideo
+        if AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo) in (1, 2):
+            self.hud.show("error", "No camera access", "Turn it on in System Settings", hide_after=2.5)
+            ui(alert, "Camera access is off", "Mouthpiece reads your lips through the camera. Turn Mouthpiece "
+               "on under Privacy & Security → Camera, then reopen it.", "camera")
+            return
+        if self._no_camera():
+            self.hud.show("error", "No camera found", "Connect one, then pick it under Camera", hide_after=3.0)
             return
         if self.pending_stop is not None:  # pressed again during the tail: finish the last one now
             self._finish_stop(self.pending_stop)
@@ -272,11 +369,14 @@ class Mouthpiece(NSObject):
         # the app you're typing into is frontmost right now
         self.ctx = capture() if self.settings.get("use_context", True) else Context()
         rec = self.camera.start_recording()
+        note = "" if self.camera.ready.is_set() else "Starting camera…"
         if self.whisper_on:
             self.mic.start()
+            if self.mic.error:  # e.g. the AirPods went back in their case
+                note = f"{self.mic.name or 'Mic'} not available, lips only"
         self._set_status_icon(True)
         title = "Hands-free · tap to finish" if hands_free else "Listening"
-        self.hud.show("listening", title, "" if self.camera.ready.is_set() else "Starting camera…")
+        self.hud.show("listening", title, note)
         threading.Thread(target=self._preview_loop, args=(self.session, rec), daemon=True).start()
 
     @objc.python_method
@@ -352,9 +452,10 @@ class Mouthpiece(NSObject):
             time.sleep(PREVIEW_EVERY)
             waited += PREVIEW_EVERY
             if not rec.ts and (self.camera.error or waited > 4):
-                msg = self.camera.error or "The camera isn't sending frames"
-                print(f"[mouthpiece] camera problem: {msg}")
-                ui(self.hud.show, "error", "Camera problem", msg[:90], 5.0)
+                print(f"[mouthpiece] camera problem: {self.camera.error or 'no frames'}")
+                ui(self.hud.show, "error", "Camera problem",
+                   "Close other apps using it, or pick another" if not self.camera.error else
+                   "Couldn't open it. Try another under Camera", 5.0)
                 return
             if self.session != session or self.preview_busy or len(rec.ts) < 15:
                 continue
@@ -380,7 +481,10 @@ class Mouthpiece(NSObject):
                     self.cleaner = Cleaner(job[1])
                     self._warm_cleanup()
                     print(f"[mouthpiece] cleanup: {self.cleaner.describe()}")
-                    ui(self.cleanup_item.setTitle_, f"Cleanup: {self.cleaner.describe()}")
+                    ui(self.cleanup_item.setTitle_, f"Cleanup: {self.cleaner.label()}")
+                    win = getattr(self, "settings_win", None)
+                    if win is not None and win.win.isVisible():
+                        ui(win.build)  # its "Using: …" line
                 elif job[0] == "reload":  # e.g. face model reset from Settings
                     self.reader = LipReader(beam_size=self.opts.beam)
                     self.reader.warmup()
@@ -405,18 +509,32 @@ class Mouthpiece(NSObject):
     @objc.python_method
     def _load(self):
         t = time.time()
-        self.reader = LipReader(beam_size=self.opts.beam)
-        self.reader.warmup()
+        try:
+            self.reader = LipReader(beam_size=self.opts.beam)
+            self.reader.warmup()
+        except Exception:
+            from . import weights
+            bad = weights.missing(MODELS) + weights.corrupt(MODELS)
+            if not bad:
+                raise
+            print(f"[mouthpiece] damaged model files, downloading again: {[b[0] for b in bad]}")
+            for rel, *_ in bad:
+                try:
+                    os.remove(os.path.join(MODELS, rel))
+                except OSError:
+                    pass
+            ui(self.hud.hide)
+            ui(self._need_download, "Some model files were damaged. Download them again to continue.")
+            return
         if self.cleaner.backend == "local":
             ui(self.hud.set_text, "Loading the text-cleanup model…")
         self._warm_cleanup()
-        ui(self.cleanup_item.setTitle_, f"Cleanup: {self.cleaner.describe()}")
+        ui(self.cleanup_item.setTitle_, f"Cleanup: {self.cleaner.label()}")
         self.loading = False
         print(f"[mouthpiece] model ready in {time.time() - t:.1f}s "
               f"(encoder on {self.reader.enc_device}, cleanup: {self.cleaner.describe()})")
         name = self.opts.key.replace("_", " ").title()
-        ui(self.state_item.setTitle_, "Ready")
-        ui(self.state_item.setImage_, symbol("checkmark.circle", 13, NSFontWeightRegular))
+        ui(self._set_state, "Ready", "checkmark.circle")
         if self.settings.get("whisper"):
             self.jobs.put(("whisper",))
         if self.opts.onboard or not self.settings.get("onboarded"):
@@ -437,13 +555,19 @@ class Mouthpiece(NSObject):
     @objc.python_method
     def _load_whisper(self):
         """Model thread: download (first time, 1.8 GB) and load the audio-visual model."""
-        from . import av
+        from . import av, weights
         if not av.available():
             ui(self.hud.show, "reading", "Whisper mode", "Downloading the audio-visual model (1.8 GB)…")
             try:
                 av.download(lambda pct: ui(self.hud.set_text, f"Downloading the audio-visual model… {pct:.0f}%"))
             except Exception as e:
-                ui(self.hud.show, "error", "Whisper mode", f"Download failed: {e}"[:80], 5.0)
+                print(f"[mouthpiece] whisper model download failed: {e!r}")
+                ui(self.hud.hide)
+                ui(alert, "Couldn't download the whisper model",
+                   f"{e}\n\nMouthpiece keeps reading lips. Turn whisper mode off and on in Settings to try again."
+                   if isinstance(e, weights.DownloadError) else
+                   "Something went wrong while downloading. Mouthpiece keeps reading lips. Turn whisper mode "
+                   "off and on in Settings to try again.")
                 return
         ui(self.hud.show, "reading", "Whisper mode", "Loading…")
         self.av_reader = av.AVReader(beam_size=self.opts.beam)
@@ -451,6 +575,9 @@ class Mouthpiece(NSObject):
         print("[mouthpiece] whisper mode ready (lips + audio)")
         if self.mic.keep_open:
             self.mic.open()  # Bluetooth mics: switch the headset to call mode now, not on your first word
+        if self.mic.error:
+            ui(self.hud.show, "error", "Whisper mic not connected", "Reading lips only until it's back", 4.0)
+            return
         ui(self.hud.show, "done", "Whisper mode on", "Whisper or speak softly while you mouth the words", 3.0)
 
     @objc.python_method
@@ -542,6 +669,14 @@ class Mouthpiece(NSObject):
         self.context.append(text)
         self._log(rec, candidates, text, t_all)
         self._save_clip(rois, candidates, text)
+        if self.opts.paste and not Quartz.CGPreflightPostEventAccess():
+            ui(copy_text, text)  # pasting would silently do nothing
+            ui(self.hud.show, "error", "Copied, not pasted", "Allow Accessibility to paste · ⌘V now", 3.0)
+            if not self._warned_paste:
+                self._warned_paste = True
+                ui(alert, "Allow Mouthpiece to paste", "Your text is on the clipboard. To paste it at your cursor "
+                   "automatically, turn Mouthpiece on under Privacy & Security → Accessibility.", "accessibility")
+            return
         if self.opts.paste:
             ui(paste_text, out)
             if ctx is not None and ctx.element is not None and self.settings.get("learn_corrections", True):
@@ -582,7 +717,9 @@ class AppDelegate(NSObject):
     since the menu-bar icon can be hidden behind the notch when the menu bar is full."""
 
     def applicationShouldHandleReopen_hasVisibleWindows_(self, app, visible):
-        if self.lf is not None and not self.lf.loading:
+        if self.lf is not None and self.lf.downloading:
+            self.lf.show_setup()
+        elif self.lf is not None and not self.lf.loading:
             if self.lf.settings.get("onboarded"):
                 self.lf.openSettings_(None)
             else:

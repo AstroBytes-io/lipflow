@@ -16,5 +16,5 @@ Lipflow (the upstream project) bundles code from these projects:
 - Chaplin by Amanvir Parhar (MIT License) — the original "type what you mouth" idea and the
   Hugging Face mirrors of the model weights.
 
-Model weights (downloaded by setup.sh, not redistributed here) are the Auto-AVSR LRS3 models; the
+Model weights (downloaded from their public source on first run, not redistributed here) are the Auto-AVSR LRS3 models; the
 LRS3 dataset is licensed for non-commercial research use, so treat the weights the same way.

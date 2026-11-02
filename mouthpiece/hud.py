@@ -307,3 +307,37 @@ class HUD(NSObject):
         if self._hide_timer is not None:
             self._hide_timer.invalidate()
             self._hide_timer = None
+
+
+# -- windows-level messages ------------------------------------------------------------
+PRIVACY = {
+    "camera": "Privacy_Camera",
+    "input": "Privacy_ListenEvent",           # Input Monitoring
+    "accessibility": "Privacy_Accessibility",
+    "microphone": "Privacy_Microphone",
+}
+
+
+def open_privacy(pane: str):
+    """Open System Settings → Privacy & Security at the given pane (a PRIVACY key)."""
+    import subprocess
+    subprocess.Popen(["open", f"x-apple.systempreferences:com.apple.preference.security?{PRIVACY[pane]}"])
+
+
+def alert(title: str, text: str, pane: "str | None" = None) -> None:
+    """A native alert for problems you have to act on. With `pane`, offers "Open System Settings".
+    Main thread only."""
+    from AppKit import NSAlert, NSApplication
+    a = NSAlert.alloc().init()
+    a.setMessageText_(title)
+    a.setInformativeText_(text)
+    a.setAlertStyle_(1)  # informational; NSAlert shows the app icon
+    if pane:
+        a.addButtonWithTitle_("Open System Settings")
+        a.addButtonWithTitle_("Not Now")
+    else:
+        a.addButtonWithTitle_("OK")
+    app = NSApplication.sharedApplication()
+    app.activate() if hasattr(app, "activate") else app.activateIgnoringOtherApps_(True)
+    if a.runModal() == 1000 and pane:  # NSAlertFirstButtonReturn
+        open_privacy(pane)

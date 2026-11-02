@@ -25,7 +25,8 @@ PERSONAL_LM = os.path.join(PERSONAL_MODELS, "lm_phrasing.pth")
 
 # The app bundle's launcher sets MOUTHPIECE_APP=1: permissions then belong to "Mouthpiece", not the terminal.
 # On Windows nothing is granted per app, so the name only shows up in messages.
-WHO = "Mouthpiece" if os.environ.get("MOUTHPIECE_APP") or DESKTOP_TRAY else "your terminal"
+IN_APP = bool(os.environ.get("MOUTHPIECE_APP")) or ".app/Contents/" in sys.executable
+WHO = "Mouthpiece" if IN_APP or DESKTOP_TRAY else "your terminal"  # "your terminal" only in a dev checkout
 
 # Shared model weights (lip reader, LM, face landmarker, AV model). A dev checkout keeps them in the
 # repo's models/ (scripts/download-models.sh); the shipped app has no repo, so they download on first
