@@ -3,7 +3,7 @@
 Same vocabulary and language model as the lip reader; the encoder fuses a visual stream (the mouth
 crops) with an audio stream (16 kHz waveform, 640 samples per 25 fps video frame). Audio is
 layer-normalised per clip, so a whisper's low volume doesn't matter, only its shape.
-Weights: nguyenvulebinh/auto_avsr_av_trlrwlrs2lrs3vox2avsp_base (downloaded by setup.sh).
+Weights: nguyenvulebinh/auto_avsr_av_trlrwlrs2lrs3vox2avsp_base (downloaded the first time whisper mode is switched on).
 """
 from __future__ import annotations
 
@@ -25,24 +25,16 @@ URL = "https://huggingface.co/nguyenvulebinh/auto_avsr_av_trlrwlrs2lrs3vox2avsp_
 
 
 def download(progress=None):
-    """Fetch config + weights (1.8 GB) into models/av, resumable via a .part file."""
-    import urllib.request
+    """Fetch config + weights (1.8 GB) into models/av, resumable. progress(percent). Raises weights.DownloadError."""
+    from . import weights
     os.makedirs(AV_DIR, exist_ok=True)
-    urllib.request.urlretrieve(URL + "config.json", os.path.join(AV_DIR, "config.json"))
-    dest = os.path.join(AV_DIR, "model.safetensors")
-    part = dest + ".part"
-    with urllib.request.urlopen(URL + "model.safetensors") as r, open(part, "wb") as f:
-        total = int(r.headers.get("Content-Length") or 0)
-        done = 0
-        while True:
-            buf = r.read(1 << 20)
-            if not buf:
-                break
-            f.write(buf)
-            done += len(buf)
-            if progress and total and done % (50 << 20) < (1 << 20):
-                progress(100 * done / total)
-    os.replace(part, dest)
+    weights.need_space(AV_DIR, 1.8e9)
+    cfg = os.path.join(AV_DIR, "config.json")
+    if not os.path.exists(cfg):
+        weights.fetch(URL + "config.json", cfg)
+    # ponytail: no pinned hash yet (no known-good copy on the build machine); pin it once there is one
+    weights.fetch(URL + "model.safetensors", os.path.join(AV_DIR, "model.safetensors"),
+                  progress=progress and (lambda n: progress(min(99.0, 100 * n / 1.8e9))))
 
 
 def available() -> bool:

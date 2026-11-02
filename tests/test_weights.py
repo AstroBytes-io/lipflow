@@ -85,3 +85,11 @@ def test_download_all_skips_present_files_and_reports_progress(url, tmp_path):
     assert weights.missing(str(tmp_path), files) == []
     assert weights.corrupt(str(tmp_path), files) == []
 
+
+
+def test_refuses_when_the_disk_is_full(url, tmp_path, monkeypatch):
+    import collections
+    monkeypatch.setattr(weights.shutil, "disk_usage", lambda p: collections.namedtuple("u", "free")(1000))
+    with pytest.raises(weights.DownloadError, match="disk space"):
+        weights.download_all(str(tmp_path), [("m.pth", url, SHA, len(DATA))])
+    assert Handler.ranges == []

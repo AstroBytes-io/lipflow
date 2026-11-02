@@ -139,6 +139,13 @@ def _get(url, part, size, progress, timeout):
             raise ConnectionError("connection dropped mid-file")
 
 
+def need_space(root: str, need: float):
+    free = shutil.disk_usage(root).free
+    if need + (200 << 20) > free:
+        raise DownloadError(f"Not enough disk space: the download needs {need / 1e9:.1f} GB "
+                            f"and this Mac has {free / 1e9:.1f} GB free.")
+
+
 def download_all(root: str, files=FILES, progress=None, **kw):
     """Fetch every missing entry. progress(done_bytes, total_bytes). Raises DownloadError."""
     todo = missing(root, files)
@@ -146,11 +153,7 @@ def download_all(root: str, files=FILES, progress=None, **kw):
         return
     total = sum(e[3] for e in todo)
     os.makedirs(root, exist_ok=True)
-    need = total - sum(_have(os.path.join(root, e[0]) + ".part") for e in todo)
-    free = shutil.disk_usage(root).free
-    if need + (200 << 20) > free:
-        raise DownloadError(f"Not enough disk space: the models need {need / 1e9:.1f} GB, "
-                            f"and this Mac has {free / 1e9:.1f} GB free.")
+    need_space(root, total - sum(_have(os.path.join(root, e[0]) + ".part") for e in todo))
     base = 0
     for rel, url, sha, size in todo:
         fetch(url, os.path.join(root, rel), sha, size,
